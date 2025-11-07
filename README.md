@@ -15,3 +15,9 @@ go get -u ./...
 
 go mod tidy
 ```
+
+**02.11.2025** :
+
+- Upgrade deprecated ebiten text to v2
+
+The `github.com/hajimehoshi/ebiten/v2/text/v2` package is now used instead of the deprecated `github.com/hajimehoshi/ebiten/v2/text` package. The `text.Draw` signature has changed and now it takes less arguments, so we need to create a DrawOption object that stores translation information.

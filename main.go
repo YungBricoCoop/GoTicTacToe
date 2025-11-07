@@ -4,12 +4,6 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/opentype"
 	"image"
 	"image/color"
 	_ "image/png"
@@ -17,6 +11,11 @@ import (
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
 const (
@@ -31,12 +30,13 @@ const (
 var imageFS embed.FS
 
 var (
-	normalText  font.Face
-	bigText     font.Face
-	boardImage  *ebiten.Image
-	symbolImage *ebiten.Image
-	textImage   = ebiten.NewImage(sWidth, sWidth)
-	gameImage   = ebiten.NewImage(sWidth, sWidth)
+	normalTextFace *text.GoTextFace
+	bigTextFace    *text.GoTextFace
+	boardImage     *ebiten.Image
+	symbolImage    *ebiten.Image
+	textImage      = ebiten.NewImage(sWidth, sWidth)
+	gameImage      = ebiten.NewImage(sWidth, sWidth)
+	fontSource     *text.GoTextFaceSource
 )
 
 type Game struct {
@@ -102,7 +102,10 @@ func keyChangeColor(key ebiten.Key, screen *ebiten.Image) {
 			msgText = fmt.Sprintf("RESETING...")
 			colorText = color.RGBA{R: colorChange, G: 255, B: 255, A: 255}
 		}
-		text.Draw(screen, msgText, normalText, sWidth/2, sHeight-30, colorText)
+		op := &text.DrawOptions{}
+		op.GeoM.Translate(sWidth/2, sHeight-30)
+		op.ColorScale.ScaleWithColor(colorText)
+		text.Draw(screen, msgText, normalTextFace, op)
 	}
 }
 
@@ -113,18 +116,30 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	mx, my := ebiten.CursorPosition()
 
 	msgFPS := fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f", ebiten.CurrentTPS(), ebiten.CurrentFPS())
-	text.Draw(screen, msgFPS, normalText, 0, sHeight-30, color.White)
+	opFPS := &text.DrawOptions{}
+	opFPS.GeoM.Translate(0, sHeight-30)
+	opFPS.ColorScale.ScaleWithColor(color.White)
+	text.Draw(screen, msgFPS, normalTextFace, opFPS)
 
 	keyChangeColor(ebiten.KeyEscape, screen)
 	keyChangeColor(ebiten.KeyR, screen)
 	msgOX := fmt.Sprintf("O: %v | X: %v", g.pointsO, g.pointsX)
-	text.Draw(screen, msgOX, normalText, sWidth/2, sHeight-5, color.White)
+	opOX := &text.DrawOptions{}
+	opOX.GeoM.Translate(sWidth/2, sHeight-5)
+	opOX.ColorScale.ScaleWithColor(color.White)
+	text.Draw(screen, msgOX, normalTextFace, opOX)
 	if g.win != "" {
 		msgWin := fmt.Sprintf("%v wins!", g.win)
-		text.Draw(screen, msgWin, bigText, 70, 200, color.RGBA{G: 50, B: 200, A: 255})
+		opWin := &text.DrawOptions{}
+		opWin.GeoM.Translate(70, 200)
+		opWin.ColorScale.ScaleWithColor(color.RGBA{G: 50, B: 200, A: 255})
+		text.Draw(screen, msgWin, bigTextFace, opWin)
 	}
 	msg := fmt.Sprintf("%v", g.playing)
-	text.Draw(screen, msg, normalText, mx, my, color.RGBA{G: 255, A: 255})
+	opPlaying := &text.DrawOptions{}
+	opPlaying.GeoM.Translate(float64(mx), float64(my))
+	opPlaying.ColorScale.ScaleWithColor(color.RGBA{G: 255, A: 255})
+	text.Draw(screen, msg, normalTextFace, opPlaying)
 }
 
 func (g *Game) DrawSymbol(x, y int, sym string) {
@@ -221,25 +236,18 @@ func (g *Game) ResetPoints() {
 }
 
 func init() {
-	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
+	var err error
+	fontSource, err = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
 	if err != nil {
 		log.Fatal(err)
 	}
-	normalText, err = opentype.NewFace(tt, &opentype.FaceOptions{
-		Size:    fontSize,
-		DPI:     dpi,
-		Hinting: font.HintingFull,
-	})
-	if err != nil {
-		log.Fatal(err)
+	normalTextFace = &text.GoTextFace{
+		Source: fontSource,
+		Size:   fontSize,
 	}
-	bigText, err = opentype.NewFace(tt, &opentype.FaceOptions{
-		Size:    bigFontSize,
-		DPI:     dpi,
-		Hinting: font.HintingFull,
-	})
-	if err != nil {
-		log.Fatal(err)
+	bigTextFace = &text.GoTextFace{
+		Source: fontSource,
+		Size:   bigFontSize,
 	}
 }
 
