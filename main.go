@@ -19,10 +19,16 @@ import (
 )
 
 const (
-	sWidth      = 480
-	sHeight     = 600
-	fontSize    = 15
-	bigFontSize = 100
+	sWidth            = 480
+	sHeight           = 600
+	fontSize          = 15
+	bigFontSize       = 100
+	gridCells         = 3
+	gridCellSize      = sWidth / gridCells
+	cross             = "X"
+	circle            = "O"
+	pressTicksToReset = 60
+	pressTicksToExit  = 60
 )
 
 //go:embed images/*
@@ -41,7 +47,7 @@ var (
 type Game struct {
 	playing   string
 	state     int
-	gameBoard [3][3]string
+	gameBoard [gridCells][gridCells]string
 	round     int
 	pointsO   int
 	pointsX   int
@@ -58,16 +64,15 @@ func (g *Game) Update() error {
 	case 1:
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			mx, my := ebiten.CursorPosition()
-			if mx/160 < 3 && mx >= 0 && my/160 < 3 && my >= 0 && g.gameBoard[mx/160][my/160] == "" {
+			if mx/gridCellSize < gridCells && mx >= 0 && my/gridCellSize < gridCells && my >= 0 && g.gameBoard[mx/gridCellSize][my/gridCellSize] == "" {
+				symbol := cross
+				symbolReverse := circle
 				if g.round%2 == 0+g.alter {
-					g.DrawSymbol(mx/160, my/160, "O")
-					g.gameBoard[mx/160][my/160] = "O"
-					g.playing = "X"
-				} else {
-					g.DrawSymbol(mx/160, my/160, "X")
-					g.gameBoard[mx/160][my/160] = "X"
-					g.playing = "O"
+					symbol, symbolReverse = circle, cross
 				}
+				g.DrawSymbol(mx/gridCellSize, my/gridCellSize, symbol)
+				g.gameBoard[mx/gridCellSize][my/gridCellSize] = symbol
+				g.playing = symbolReverse
 				g.wins(g.CheckWin())
 				g.round++
 			}
@@ -79,11 +84,11 @@ func (g *Game) Update() error {
 		}
 		break
 	}
-	if inpututil.KeyPressDuration(ebiten.KeyR) == 60 {
+	if inpututil.KeyPressDuration(ebiten.KeyR) == pressTicksToReset {
 		g.Load()
 		g.ResetPoints()
 	}
-	if inpututil.KeyPressDuration(ebiten.KeyEscape) == 60 {
+	if inpututil.KeyPressDuration(ebiten.KeyEscape) == pressTicksToExit {
 		os.Exit(0)
 	}
 	return nil
@@ -114,10 +119,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(gameImage, nil)
 	mx, my := ebiten.CursorPosition()
 
-	msgFPS := fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f", ebiten.CurrentTPS(), ebiten.CurrentFPS())
+	msgFPS := fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f", ebiten.ActualTPS(), ebiten.ActualFPS())
 	opFPS := &text.DrawOptions{}
-	opFPS.GeoM.Translate(0, sHeight-30)
+	opFPS.GeoM.Translate(0, sHeight-50)
 	opFPS.ColorScale.ScaleWithColor(color.White)
+	opFPS.LineSpacing = fontSize + 5
 	text.Draw(screen, msgFPS, normalTextFace, opFPS)
 
 	keyChangeColor(ebiten.KeyEscape, screen)
@@ -131,6 +137,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		msgWin := fmt.Sprintf("%v wins!", g.win)
 		opWin := &text.DrawOptions{}
 		opWin.GeoM.Translate(70, 200)
+		opWin.LineSpacing = bigFontSize + 20
 		opWin.ColorScale.ScaleWithColor(color.RGBA{G: 50, B: 200, A: 255})
 		text.Draw(screen, msgWin, bigTextFace, opWin)
 	}
@@ -152,7 +159,7 @@ func (g *Game) DrawSymbol(x, y int, sym string) {
 	}
 	symbolImage = ebiten.NewImageFromImage(decoded)
 	opSymbol := &ebiten.DrawImageOptions{}
-	opSymbol.GeoM.Translate(float64((160*(x+1)-160)+7), float64((160*(y+1)-160)+7))
+	opSymbol.GeoM.Translate(float64((gridCellSize*(x+1)-gridCellSize)+7), float64((gridCellSize*(y+1)-gridCellSize)+7))
 
 	gameImage.DrawImage(symbolImage, opSymbol)
 }
@@ -169,10 +176,10 @@ func (g *Game) Init() {
 	boardImage = ebiten.NewImageFromImage(decoded)
 	re := newRandom().Intn(2)
 	if re == 0 {
-		g.playing = "O"
+		g.playing = circle
 		g.alter = 0
 	} else {
-		g.playing = "X"
+		g.playing = cross
 		g.alter = 1
 	}
 	g.Load()
@@ -181,13 +188,13 @@ func (g *Game) Init() {
 
 func (g *Game) Load() {
 	gameImage.Clear()
-	g.gameBoard = [3][3]string{{"", "", ""}, {"", "", ""}, {"", "", ""}}
+	g.gameBoard = [gridCells][gridCells]string{{"", "", ""}, {"", "", ""}, {"", "", ""}}
 	g.round = 0
 	if g.alter == 0 {
-		g.playing = "X"
+		g.playing = cross
 		g.alter = 1
 	} else if g.alter == 1 {
-		g.playing = "O"
+		g.playing = circle
 		g.alter = 0
 	}
 	g.win = ""
@@ -195,12 +202,12 @@ func (g *Game) Load() {
 }
 
 func (g *Game) wins(winner string) {
-	if winner == "O" {
-		g.win = "O"
+	if winner == circle {
+		g.win = circle
 		g.pointsO++
 		g.state = 2
-	} else if winner == "X" {
-		g.win = "X"
+	} else if winner == cross {
+		g.win = cross
 		g.pointsX++
 		g.state = 2
 	} else if winner == "tie" {
