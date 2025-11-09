@@ -23,7 +23,6 @@ const (
 	sHeight     = 600
 	fontSize    = 15
 	bigFontSize = 100
-	dpi         = 72
 )
 
 //go:embed images/*
@@ -211,12 +210,12 @@ func (g *Game) wins(winner string) {
 }
 
 func (g *Game) CheckWin() string {
-	for i, _ := range g.gameBoard {
+	for i := range g.gameBoard {
 		if g.gameBoard[i][0] == g.gameBoard[i][1] && g.gameBoard[i][1] == g.gameBoard[i][2] {
 			return g.gameBoard[i][0]
 		}
 	}
-	for i, _ := range g.gameBoard {
+	for i := range g.gameBoard {
 		if g.gameBoard[0][i] == g.gameBoard[1][i] && g.gameBoard[1][i] == g.gameBoard[2][i] {
 			return g.gameBoard[0][i]
 		}
