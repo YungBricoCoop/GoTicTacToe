@@ -16,3 +16,7 @@ func (v Vector) Scale(f float32) Vector {
 func Perp(v Vector) Vector {
 	return Vector{X: v.Y, Y: -v.X}
 }
+
+func Floor(v Vector) Vector {
+	return Vector{X: float32(int(v.X)), Y: float32(int(v.Y))}
+}
