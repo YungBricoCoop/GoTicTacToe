@@ -1,4 +1,4 @@
-package utils
+package geometry
 
 type Vector struct {
 	X float32
