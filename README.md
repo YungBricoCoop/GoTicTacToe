@@ -21,3 +21,9 @@ go mod tidy
 - Upgrade deprecated ebiten text to v2
 
 The `github.com/hajimehoshi/ebiten/v2/text/v2` package is now used instead of the deprecated `github.com/hajimehoshi/ebiten/v2/text` package. The `text.Draw` signature has changed and now it takes less arguments, so we need to create a DrawOption object that stores translation information.
+
+**21.11.2025** :
+
+- Add golangci-lint configuration file
+
+Creation of `.golangci.yml` file, the file contains a known config from : https://gist.github.com/maratori/47a4d00457a92aa426dbd48a18776322. This will help improve code quality over the whole project.
