@@ -1,5 +1,10 @@
 # Go Tic Tac Toe
 
+Description : 3D Tic-Tac-Toe game using raycasting with the Ebiten library.
+References :
+
+- https://lodev.org/cgtutor/raycasting.html
+
 ## Changelog
 
 **03.11.2025** :
