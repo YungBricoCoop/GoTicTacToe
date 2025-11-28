@@ -3,267 +3,368 @@ package main
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"image"
 	"image/color"
 	_ "image/png"
 	"log"
-	"math/rand"
-	"os"
-	"time"
+	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/font/basicfont"
 )
 
-const (
-	sWidth      = 480
-	sHeight     = 600
-	fontSize    = 15
-	bigFontSize = 100
-	dpi         = 72
-)
-
-//go:embed images/*
+//go:embed images/*.png
 var imageFS embed.FS
 
+const (
+	ScreenSize = 480
+	WindowSize = 480
+
+	GridSize = 3
+	CellSize = ScreenSize / GridSize
+
+	Margin    = 10
+	LineWidth = 2
+	HeaderY   = 20
+	BottomY   = ScreenSize - 10
+)
+
 var (
-	normalTextFace *text.GoTextFace
-	bigTextFace    *text.GoTextFace
-	boardImage     *ebiten.Image
-	symbolImage    *ebiten.Image
-	textImage      = ebiten.NewImage(sWidth, sWidth)
-	gameImage      = ebiten.NewImage(sWidth, sWidth)
-	fontSource     *text.GoTextFaceSource
+	xImage *ebiten.Image
+	oImage *ebiten.Image
 )
 
 type Game struct {
-	playing   string
-	state     int
-	gameBoard [3][3]string
-	round     int
-	pointsO   int
-	pointsX   int
-	win       string
-	alter     int
+	board  [GridSize][GridSize]int // 0 = empty, 1 = X, 2 = O
+	player int                     // current player: 1 (X) or 2 (O)
+	winner int                     // 0 = nobody, 1 = X, 2 = O, 3 = draw
+	over   bool                    // game over?
+
+	// scores
+	pointsX int
+	pointsO int
+
+	// Player names
+	playerXName string
+	playerOName string
+
+	// Name input
+	entering  bool   // true while entering names
+	editingX  bool   // true = entering X's name, false = O's name
+	tempInput string // buffer for current text
+
+	startPlayer int // 1 = x, 2 = o
+}
+
+func NewGame() *Game {
+	return &Game{
+		player:      1, // X starts
+		startPlayer: 1,
+		playerXName: "X",  // default values just in case
+		playerOName: "O",  // default values
+		entering:    true, // start by entering names
+		editingX:    true, // start with player X
+		pointsX:     0,
+		pointsO:     0,
+	}
+}
+
+func (g *Game) resetBoard() {
+	g.board = [GridSize][GridSize]int{}
+	g.winner = 0
+	g.over = false
+
+	if g.startPlayer == 1 {
+		g.startPlayer = 2
+	} else {
+		g.startPlayer = 1
+	}
+	g.player = g.startPlayer
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return ScreenSize, ScreenSize
 }
 
 func (g *Game) Update() error {
-	switch g.state {
-	case 0:
-		g.Init()
-		break
+	// ESC = quit the game
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		return ebiten.Termination
+	}
 
-	case 1:
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			mx, my := ebiten.CursorPosition()
-			if mx/160 < 3 && mx >= 0 && my/160 < 3 && my >= 0 && g.gameBoard[mx/160][my/160] == "" {
-				if g.round%2 == 0+g.alter {
-					g.DrawSymbol(mx/160, my/160, "O")
-					g.gameBoard[mx/160][my/160] = "O"
-					g.playing = "X"
-				} else {
-					g.DrawSymbol(mx/160, my/160, "X")
-					g.gameBoard[mx/160][my/160] = "X"
-					g.playing = "O"
+	// R = full reset
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		*g = *NewGame()
+		return nil
+	}
+
+	// name input phase I just added
+	if g.entering {
+		// Get typed characters
+		chars := ebiten.AppendInputChars(nil)
+		for _, c := range chars {
+			if c == '\n' || c == '\r' {
+				continue
+			}
+			g.tempInput += string(c)
+		}
+
+		// Backspace
+		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.tempInput) > 0 {
+			g.tempInput = g.tempInput[:len(g.tempInput)-1]
+		}
+
+		// Enter -> validate the name
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			if g.editingX {
+				if g.tempInput != "" {
+					g.playerXName = g.tempInput
 				}
-				g.wins(g.CheckWin())
-				g.round++
+				g.tempInput = ""
+				g.editingX = false // switch to O
+			} else {
+				if g.tempInput != "" {
+					g.playerOName = g.tempInput
+				}
+				g.tempInput = ""
+				g.entering = false // done, we can play
 			}
 		}
-		break
-	case 2:
+
+		// While entering names, we don't play
+		return nil
+	}
+
+	// === GAME OVER ===
+	if g.over {
+		// Left click = start a new game
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			g.Load()
+			g.resetBoard()
 		}
-		break
+		return nil
 	}
-	if inpututil.KeyPressDuration(ebiten.KeyR) == 60 {
-		g.Load()
-		g.ResetPoints()
+
+	// === NORMAL GAME: click on a cell ===
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+
+		if mx >= 0 && mx < ScreenSize && my >= 0 && my < ScreenSize {
+			cx := mx / CellSize
+			cy := my / CellSize
+
+			if g.board[cy][cx] == 0 { // empty cell
+				g.board[cy][cx] = g.player
+
+				// check if someone wins
+				if w := g.checkWinner(); w != 0 {
+					g.winner = w
+					g.over = true
+
+					if w == 1 {
+						g.pointsX++
+					} else if w == 2 {
+						g.pointsO++
+					}
+
+				} else if g.isBoardFull() {
+					g.winner = 3 // draw
+					g.over = true
+				} else {
+					// switch player
+					if g.player == 1 {
+						g.player = 2
+					} else {
+						g.player = 1
+					}
+				}
+			}
+		}
 	}
-	if inpututil.KeyPressDuration(ebiten.KeyEscape) == 60 {
-		os.Exit(0)
-	}
+
 	return nil
 }
 
-func keyChangeColor(key ebiten.Key, screen *ebiten.Image) {
-	if inpututil.KeyPressDuration(key) > 1 {
-		var msgText string
-		var colorText color.RGBA
-		colorChange := 255 - (255 / 60 * uint8(inpututil.KeyPressDuration(key)))
-		if key == ebiten.KeyEscape {
-			msgText = fmt.Sprintf("CLOSING...")
-			colorText = color.RGBA{R: 255, G: colorChange, B: colorChange, A: 255}
-		} else if key == ebiten.KeyR {
-			msgText = fmt.Sprintf("RESETING...")
-			colorText = color.RGBA{R: colorChange, G: 255, B: 255, A: 255}
+// check if X or O has won
+func (g *Game) checkWinner() int {
+	b := g.board
+
+	// rows
+	for y := 0; y < GridSize; y++ {
+		if b[y][0] != 0 && b[y][0] == b[y][1] && b[y][1] == b[y][2] {
+			return b[y][0]
 		}
-		op := &text.DrawOptions{}
-		op.GeoM.Translate(sWidth/2, sHeight-30)
-		op.ColorScale.ScaleWithColor(colorText)
-		text.Draw(screen, msgText, normalTextFace, op)
 	}
+
+	// columns
+	for x := 0; x < GridSize; x++ {
+		if b[0][x] != 0 && b[0][x] == b[1][x] && b[1][x] == b[2][x] {
+			return b[0][x]
+		}
+	}
+
+	// main diagonal
+	if b[0][0] != 0 && b[0][0] == b[1][1] && b[1][1] == b[2][2] {
+		return b[0][0]
+	}
+
+	// other diagonal
+	if b[0][2] != 0 && b[0][2] == b[1][1] && b[1][1] == b[2][0] {
+		return b[0][2]
+	}
+
+	return 0
+}
+
+func (g *Game) isBoardFull() bool {
+	for y := 0; y < GridSize; y++ {
+		for x := 0; x < GridSize; x++ {
+			if g.board[y][x] == 0 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{30, 30, 30, 255})
+	face := basicfont.Face7x13
 
-	screen.DrawImage(boardImage, nil)
-	screen.DrawImage(gameImage, nil)
-	mx, my := ebiten.CursorPosition()
+	// === NAME INPUT SCREEN ===
+	if g.entering {
+		title := "Enter player names"
+		text.Draw(screen, title, face, 10, 40, color.White)
 
-	msgFPS := fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f", ebiten.CurrentTPS(), ebiten.CurrentFPS())
-	opFPS := &text.DrawOptions{}
-	opFPS.GeoM.Translate(0, sHeight-30)
-	opFPS.ColorScale.ScaleWithColor(color.White)
-	text.Draw(screen, msgFPS, normalTextFace, opFPS)
+		label := "Player X: "
+		if !g.editingX {
+			label = "Player O: "
+		}
+		text.Draw(screen, label+g.tempInput, face, 10, 80, color.RGBA{200, 200, 0, 255})
 
-	keyChangeColor(ebiten.KeyEscape, screen)
-	keyChangeColor(ebiten.KeyR, screen)
-	msgOX := fmt.Sprintf("O: %v | X: %v", g.pointsO, g.pointsX)
-	opOX := &text.DrawOptions{}
-	opOX.GeoM.Translate(sWidth/2, sHeight-5)
-	opOX.ColorScale.ScaleWithColor(color.White)
-	text.Draw(screen, msgOX, normalTextFace, opOX)
-	if g.win != "" {
-		msgWin := fmt.Sprintf("%v wins!", g.win)
-		opWin := &text.DrawOptions{}
-		opWin.GeoM.Translate(70, 200)
-		opWin.ColorScale.ScaleWithColor(color.RGBA{G: 50, B: 200, A: 255})
-		text.Draw(screen, msgWin, bigTextFace, opWin)
+		info := "Type name, Enter = OK, Backspace = delete, R = reset"
+		text.Draw(screen, info, face, 10, 120, color.White)
+		return
 	}
-	msg := fmt.Sprintf("%v", g.playing)
-	opPlaying := &text.DrawOptions{}
-	opPlaying.GeoM.Translate(float64(mx), float64(my))
-	opPlaying.ColorScale.ScaleWithColor(color.RGBA{G: 255, A: 255})
-	text.Draw(screen, msg, normalTextFace, opPlaying)
-}
 
-func (g *Game) DrawSymbol(x, y int, sym string) {
-	imageBytes, err := imageFS.ReadFile(fmt.Sprintf("images/%v.png", sym))
-	if err != nil {
-		log.Fatal(err)
-	}
-	decoded, _, err := image.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		log.Fatal(err)
-	}
-	symbolImage = ebiten.NewImageFromImage(decoded)
-	opSymbol := &ebiten.DrawImageOptions{}
-	opSymbol.GeoM.Translate(float64((160*(x+1)-160)+7), float64((160*(y+1)-160)+7))
+	score := "Score " + g.playerXName + ": " + strconv.Itoa(g.pointsX) + "  " + g.playerOName + ": " + strconv.Itoa(g.pointsO)
+	text.Draw(screen, score, face, 10, 20, color.White)
 
-	gameImage.DrawImage(symbolImage, opSymbol)
-}
+	text.Draw(screen, "ESC = quit", face, ScreenSize-110, 20, color.White)
 
-func (g *Game) Init() {
-	imageBytes, err := imageFS.ReadFile("images/board.png")
-	if err != nil {
-		log.Fatal(err)
+	// draw the grid
+	lineColor := color.RGBA{200, 200, 200, 255}
+
+	for i := 1; i < GridSize; i++ {
+		// horizontales
+		h := ebiten.NewImage(ScreenSize, 2)
+		h.Fill(lineColor)
+		opH := &ebiten.DrawImageOptions{}
+		opH.GeoM.Translate(0, float64(i*CellSize))
+		screen.DrawImage(h, opH)
+
+		// verticales
+		v := ebiten.NewImage(2, ScreenSize)
+		v.Fill(lineColor)
+		opV := &ebiten.DrawImageOptions{}
+		opV.GeoM.Translate(float64(i*CellSize), 0)
+		screen.DrawImage(v, opV)
 	}
-	decoded, _, err := image.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		log.Fatal(err)
+
+	// drawing X/O
+	for y := 0; y < GridSize; y++ {
+		for x := 0; x < GridSize; x++ {
+			if g.board[y][x] == 0 {
+				continue
+			}
+
+			var img *ebiten.Image
+			if g.board[y][x] == 1 {
+				img = xImage
+			} else {
+				img = oImage
+			}
+
+			w := img.Bounds().Dx()
+			h := img.Bounds().Dy()
+			_ = w
+			_ = h
+
+			targetSize := CellSize - 2*Margin
+
+			scaleW := float64(targetSize) / float64(w)
+			scaleH := float64(targetSize) / float64(h)
+			scale := scaleW
+			if scaleH < scaleW {
+				scale = scaleH
+			}
+
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
+
+			cellX := float64(x * CellSize)
+			CellY := float64(y * CellSize)
+
+			imgW := float64(w) * scale
+			imgH := float64(h) * scale
+
+			px := cellX + (float64(CellSize)-imgW)/2
+			py := CellY + (float64(CellSize)-imgH)/2
+
+			op.GeoM.Translate(px, py)
+			screen.DrawImage(img, op)
+		}
 	}
-	boardImage = ebiten.NewImageFromImage(decoded)
-	re := newRandom().Intn(2)
-	if re == 0 {
-		g.playing = "O"
-		g.alter = 0
+
+	// message at the bottom
+	if !g.over {
+		msg := "Turn: "
+		if g.player == 1 {
+			msg += g.playerXName
+		} else {
+			msg += g.playerOName
+		}
+		msg += "   (R = full reset)"
+		text.Draw(screen, msg, face, 10, ScreenSize-10, color.White)
 	} else {
-		g.playing = "X"
-		g.alter = 1
-	}
-	g.Load()
-	g.ResetPoints()
-}
-
-func (g *Game) Load() {
-	gameImage.Clear()
-	g.gameBoard = [3][3]string{{"", "", ""}, {"", "", ""}, {"", "", ""}}
-	g.round = 0
-	if g.alter == 0 {
-		g.playing = "X"
-		g.alter = 1
-	} else if g.alter == 1 {
-		g.playing = "O"
-		g.alter = 0
-	}
-	g.win = ""
-	g.state = 1
-}
-
-func (g *Game) wins(winner string) {
-	if winner == "O" {
-		g.win = "O"
-		g.pointsO++
-		g.state = 2
-	} else if winner == "X" {
-		g.win = "X"
-		g.pointsX++
-		g.state = 2
-	} else if winner == "tie" {
-		g.win = "No one\n"
-		g.state = 2
-	}
-}
-
-func (g *Game) CheckWin() string {
-	for i, _ := range g.gameBoard {
-		if g.gameBoard[i][0] == g.gameBoard[i][1] && g.gameBoard[i][1] == g.gameBoard[i][2] {
-			return g.gameBoard[i][0]
+		msg := ""
+		switch g.winner {
+		case 1:
+			msg = g.playerXName + " wins! Click to restart (keep score) or R"
+		case 2:
+			msg = g.playerOName + " wins! Click to restart (keep score) or R"
+		case 3:
+			msg = "Draw! Click to restart (keep score) or R"
 		}
+		text.Draw(screen, msg, face, 10, ScreenSize-10, color.White)
 	}
-	for i, _ := range g.gameBoard {
-		if g.gameBoard[0][i] == g.gameBoard[1][i] && g.gameBoard[1][i] == g.gameBoard[2][i] {
-			return g.gameBoard[0][i]
-		}
-	}
-	if (g.gameBoard[0][0] == g.gameBoard[1][1] && g.gameBoard[1][1] == g.gameBoard[2][2]) || (g.gameBoard[0][2] == g.gameBoard[1][1] && g.gameBoard[1][1] == g.gameBoard[2][0]) {
-		return g.gameBoard[1][1]
-	}
-	if g.round == 8 {
-		return "tie"
-	}
-	return ""
 }
 
-func (g *Game) ResetPoints() {
-	g.pointsO = 0
-	g.pointsX = 0
-}
-
-func init() {
-	var err error
-	fontSource, err = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+func mustLoadImage(path string) *ebiten.Image {
+	data, err := imageFS.ReadFile(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("cannot read %s: %v", path, err)
 	}
-	normalTextFace = &text.GoTextFace{
-		Source: fontSource,
-		Size:   fontSize,
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		log.Fatalf("cannot decode %s: %v", path, err)
 	}
-	bigTextFace = &text.GoTextFace{
-		Source: fontSource,
-		Size:   bigFontSize,
-	}
+	return ebiten.NewImageFromImage(img)
 }
 
-func newRandom() *rand.Rand {
-	s1 := rand.NewSource(time.Now().UnixNano())
-	return rand.New(s1)
-}
-
-func (g *Game) Layout(int, int) (int, int) {
-	return sWidth, sHeight
+func loadImages() {
+	xImage = mustLoadImage("images/x.png")
+	oImage = mustLoadImage("images/o.png")
 }
 
 func main() {
-	game := &Game{}
-	ebiten.SetWindowSize(sWidth, sHeight)
-	ebiten.SetWindowTitle("TicTacToe")
+	loadImages()
+
+	game := NewGame()
+	ebiten.SetWindowSize(WindowSize, WindowSize)
+	ebiten.SetWindowTitle("Tic-Tac-Toe (images + names + scores)")
+
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}
