@@ -248,7 +248,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return
 	}
 
-	score := "Score " + g.playerXName + ": " + strconv.Itoa(g.pointsX) + "  " + g.playerOName + ": " + strconv.Itoa(g.pointsO)
+	score := "Score " + g.playerXName + ": " + strconv.Itoa(
+		g.pointsX,
+	) + "  " + g.playerOName + ": " + strconv.Itoa(
+		g.pointsO,
+	)
 	text.Draw(screen, score, face, 10, 20, color.White)
 
 	text.Draw(screen, "ESC = quit", face, ScreenSize-110, 20, color.White)
