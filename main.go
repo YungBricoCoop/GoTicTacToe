@@ -346,6 +346,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func mustLoadImage(path string) *ebiten.Image {
+	log.Printf("Loading images from embedded filesystem:")
+	files, err := imageFS.ReadDir("images")
+	if err != nil {
+		log.Fatalf("cannot read images directory: %v", err)
+	}
+	for _, f := range files {
+		log.Printf("Loading image: %s", f.Name())
+	}
+
 	data, err := imageFS.ReadFile(path)
 	if err != nil {
 		log.Fatalf("cannot read %s: %v", path, err)
