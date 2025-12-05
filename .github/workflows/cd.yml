@@ -33,7 +33,7 @@ jobs:
 
       - name: Copy wasm_exec.js
         run: |
-          cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" dist/
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/
 
       - name: Copy static files
         run: |
