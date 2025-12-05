@@ -38,6 +38,7 @@ jobs:
       - name: Copy static files
         run: |
           cp index.html dist/
+          cp -R images dist/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
