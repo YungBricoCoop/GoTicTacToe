@@ -2,7 +2,8 @@ package main
 
 import (
 	"image/color"
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
@@ -22,6 +23,8 @@ const (
 	bigFontSize            = 100
 	bigFontSizeLineSpacing = 20
 
+	feedbackMarginBottom = 30
+
 	pressTicksToReset = 60
 	pressTicksToExit  = 60
 	keyHoldMinFrames  = 2
@@ -29,20 +32,13 @@ const (
 	lineWidth = 10
 )
 
-var (
-	colBg    = color.RGBA{0xfa, 0xf8, 0xef, 0xff}
-	colGrid  = color.RGBA{0xbb, 0xad, 0xa0, 0xff}
-	colX     = color.RGBA{0x77, 0x6e, 0x65, 0xff}
-	colO     = color.RGBA{0xf2, 0xb1, 0x79, 0xff}
-	colText  = color.RGBA{0x77, 0x6e, 0x65, 0xff}
-	colWin   = color.RGBA{0xed, 0xc2, 0x2e, 0xff}
-	colReset = color.RGBA{0x8f, 0x7a, 0x66, 0xff}
-)
+type Player int8
 
 const (
-	cross  = "X"
-	circle = "O"
-	tie    = "tie"
+	PlayerNone Player = iota
+	PlayerX
+	PlayerO
+	PlayerTie
 )
 
 type TextAlign int
@@ -59,12 +55,6 @@ const (
 	BottomRight
 )
 
-var (
-	normalTextFace *text.GoTextFace
-	bigTextFace    *text.GoTextFace
-	fontSource     *text.GoTextFaceSource
-)
-
 type GameState int
 
 const (
@@ -75,24 +65,51 @@ const (
 
 type Game struct {
 	state   GameState
-	board   [gridCells][gridCells]string
+	board   [gridCells][gridCells]Player
 	round   int
 	pointsO int
 	pointsX int
-	playing string
-	win     string
+	playing Player
+	win     Player
 	alter   int
 
 	boardImage *ebiten.Image
+
+	colBg    color.RGBA
+	colGrid  color.RGBA
+	colX     color.RGBA
+	colO     color.RGBA
+	colText  color.RGBA
+	colWin   color.RGBA
+	colReset color.RGBA
+
+	normalTextFace *text.GoTextFace
+	bigTextFace    *text.GoTextFace
+	fontSource     *text.GoTextFaceSource
+
+	logger *slog.Logger
 }
 
 func (g *Game) Layout(int, int) (int, int) { return sWidth, sHeight }
 
 func main() {
-	game := &Game{state: stateBoot}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	game := &Game{
+		state:    stateBoot,
+		colBg:    color.RGBA{0xfa, 0xf8, 0xef, 0xff},
+		colGrid:  color.RGBA{0xbb, 0xad, 0xa0, 0xff},
+		colX:     color.RGBA{0x77, 0x6e, 0x65, 0xff},
+		colO:     color.RGBA{0xf2, 0xb1, 0x79, 0xff},
+		colText:  color.RGBA{0x77, 0x6e, 0x65, 0xff},
+		colWin:   color.RGBA{0xed, 0xc2, 0x2e, 0xff},
+		colReset: color.RGBA{0x8f, 0x7a, 0x66, 0xff},
+		logger:   logger,
+	}
+
 	ebiten.SetWindowSize(sWidth, sHeight)
-	ebiten.SetWindowTitle("TicTacToe")
+	ebiten.SetWindowTitle("TicTacToe Raycast")
 	if err := ebiten.RunGame(game); err != nil {
-		log.Fatal(err)
+		logger.Error("Game crashed", "error", err)
+		os.Exit(1)
 	}
 }

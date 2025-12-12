@@ -2,9 +2,8 @@ package main
 
 import (
 	"bytes"
-	"log"
-	"math/rand"
-	"time"
+	"math/rand/v2"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
@@ -13,44 +12,45 @@ import (
 
 func (g *Game) initAssets() {
 	var err error
-	fontSource, err = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+	g.fontSource, err = text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
 	if err != nil {
-		log.Fatal(err)
+		g.logger.Error("Failed to load font", "error", err)
+		os.Exit(1)
 	}
-	normalTextFace = &text.GoTextFace{Source: fontSource, Size: fontSize}
-	bigTextFace = &text.GoTextFace{Source: fontSource, Size: bigFontSize}
+	g.normalTextFace = &text.GoTextFace{Source: g.fontSource, Size: fontSize}
+	g.bigTextFace = &text.GoTextFace{Source: g.fontSource, Size: bigFontSize}
 
 	g.boardImage = ebiten.NewImage(sWidth, sHeight)
 }
 
 func (g *Game) seedFirstPlayer() {
-	if newRandom().Intn(2) == 0 {
-		g.playing = circle
+	if rand.IntN(2) == 0 { //nolint:gosec,mnd // weak rng is fine
+		g.playing = PlayerO
 		g.alter = 0
 		return
 	}
-	g.playing = cross
+	g.playing = PlayerX
 	g.alter = 1
 }
 
 func (g *Game) resetRound() {
-	g.board = [gridCells][gridCells]string{}
+	g.board = [gridCells][gridCells]Player{}
 	g.round = 0
 
 	// reset board image
-	g.boardImage.Fill(colBg)
+	g.boardImage.Fill(g.colBg)
 	g.drawGrid(g.boardImage)
 
 	// alternate the round starter
 	if g.alter == 0 {
-		g.playing = cross
+		g.playing = PlayerX
 		g.alter = 1
 	} else {
-		g.playing = circle
+		g.playing = PlayerO
 		g.alter = 0
 	}
 
-	g.win = ""
+	g.win = PlayerNone
 	g.state = statePlay
 }
 
@@ -59,51 +59,53 @@ func (g *Game) resetPoints() {
 	g.pointsX = 0
 }
 
-func (g *Game) currentSymbol() string {
+func (g *Game) currentSymbol() Player {
 	if g.round%2 == g.alter {
-		return circle
+		return PlayerO
 	}
-	return cross
+	return PlayerX
 }
 
-func otherSymbol(s string) string {
-	if s == circle {
-		return cross
+func otherSymbol(s Player) Player {
+	if s == PlayerO {
+		return PlayerX
 	}
-	return circle
+	return PlayerO
 }
 
-func (g *Game) applyWinner(w string) {
+func (g *Game) applyWinner(w Player) {
 	switch w {
-	case circle:
-		g.win = circle
+	case PlayerO:
+		g.win = PlayerO
 		g.pointsO++
 		g.state = stateDone
-	case cross:
-		g.win = cross
+	case PlayerX:
+		g.win = PlayerX
 		g.pointsX++
 		g.state = stateDone
-	case tie:
-		g.win = "No one"
+	case PlayerTie:
+		g.win = PlayerTie
 		g.state = stateDone
+	case PlayerNone:
+		// do nothing
 	}
 }
 
-func (g *Game) checkWin() string {
-	for i := 0; i < gridCells; i++ {
+func (g *Game) checkWin() Player {
+	for i := range gridCells {
 		a, b, c := g.board[i][0], g.board[i][1], g.board[i][2]
-		if a != "" && a == b && b == c {
+		if a != PlayerNone && a == b && b == c {
 			return a
 		}
 	}
-	for i := 0; i < gridCells; i++ {
+	for i := range gridCells {
 		a, b, c := g.board[0][i], g.board[1][i], g.board[2][i]
-		if a != "" && a == b && b == c {
+		if a != PlayerNone && a == b && b == c {
 			return a
 		}
 	}
 	m := g.board[1][1]
-	if m != "" {
+	if m != PlayerNone {
 		if g.board[0][0] == m && g.board[2][2] == m {
 			return m
 		}
@@ -113,9 +115,9 @@ func (g *Game) checkWin() string {
 	}
 
 	if g.round == gridCells*gridCells-1 {
-		return tie
+		return PlayerTie
 	}
-	return ""
+	return PlayerNone
 }
 
 func getCursorIdxFromCell() (int, int, bool) {
@@ -129,9 +131,4 @@ func getCursorIdxFromCell() (int, int, bool) {
 		return 0, 0, false
 	}
 	return cx, cy, true
-}
-
-func newRandom() *rand.Rand {
-	s1 := rand.NewSource(time.Now().UnixNano())
-	return rand.New(s1)
 }

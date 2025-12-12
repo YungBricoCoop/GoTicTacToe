@@ -10,6 +10,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
+const maxAlpha = 255
+
 func drawText(
 	screen *ebiten.Image,
 	msg string,
@@ -29,7 +31,7 @@ func drawText(
 	case TopLeft, CenterLeft, BottomLeft:
 		ox = 0
 	case TopCenter, Center, BottomCenter:
-		ox = -w / 2
+		ox = -w / 2 //nolint:mnd // centering
 	case TopRight, CenterRight, BottomRight:
 		ox = -w
 	}
@@ -39,7 +41,7 @@ func drawText(
 	case TopLeft, TopCenter, TopRight:
 		oy = 0
 	case CenterLeft, Center, CenterRight:
-		oy = -h / 2
+		oy = -h / 2 //nolint:mnd // centering
 	case BottomLeft, BottomCenter, BottomRight:
 		oy = -h
 	}
@@ -49,7 +51,7 @@ func drawText(
 	text.Draw(screen, msg, face, op)
 }
 
-func drawKeyHoldFeedback(screen *ebiten.Image, key ebiten.Key, label string, base color.RGBA) {
+func (g *Game) drawKeyHoldFeedback(screen *ebiten.Image, key ebiten.Key, label string, base color.RGBA) {
 	frames := inpututil.KeyPressDuration(key)
 	if frames < keyHoldMinFrames {
 		return
@@ -57,7 +59,8 @@ func drawKeyHoldFeedback(screen *ebiten.Image, key ebiten.Key, label string, bas
 	if frames > pressTicksToReset {
 		frames = pressTicksToReset
 	}
-	fade := uint8(255 - (255*frames)/pressTicksToReset)
+
+	fade := uint8(maxAlpha - (maxAlpha*frames)/pressTicksToReset) //nolint:gosec // safe conversion
 
 	c := base
 	if key == ebiten.KeyEscape {
@@ -72,10 +75,10 @@ func drawKeyHoldFeedback(screen *ebiten.Image, key ebiten.Key, label string, bas
 		screen,
 		label,
 		float64(sWidthMid),
-		float64(sHeight-30),
+		float64(sHeight-feedbackMarginBottom),
 		BottomCenter,
 		c,
-		normalTextFace,
+		g.normalTextFace,
 		fontSizeLineSpacing,
 	)
 }
@@ -88,11 +91,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// metrics
 	msgFPS := fmt.Sprintf("TPS: %0.2f\nFPS: %0.2f", ebiten.ActualTPS(), ebiten.ActualFPS())
-	drawText(screen, msgFPS, 0, float64(sHeight), BottomLeft, colText, normalTextFace, fontSizeLineSpacing)
+	drawText(screen, msgFPS, 0, float64(sHeight), BottomLeft, g.colText, g.normalTextFace, fontSizeLineSpacing)
 
 	// pressed key info
-	drawKeyHoldFeedback(screen, ebiten.KeyEscape, "CLOSING...", colReset)
-	drawKeyHoldFeedback(screen, ebiten.KeyR, "RESETING...", colReset)
+	g.drawKeyHoldFeedback(screen, ebiten.KeyEscape, "CLOSING...", g.colReset)
+	g.drawKeyHoldFeedback(screen, ebiten.KeyR, "RESETING...", g.colReset)
 
 	// score
 	msgOX := fmt.Sprintf("O: %d | X: %d", g.pointsO, g.pointsX)
@@ -102,35 +105,41 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		float64(sWidthMid),
 		float64(sHeight),
 		BottomCenter,
-		colText,
-		normalTextFace,
+		g.colText,
+		g.normalTextFace,
 		fontSizeLineSpacing,
 	)
 
 	// winner banner
-	if g.win != "" {
-		msgWin := fmt.Sprintf("%s wins!", g.win)
+	if g.win != PlayerNone {
+		msgWin := g.getWinMessage()
 		drawText(
 			screen,
 			msgWin,
 			float64(sWidthMid),
 			float64(sHeightMid),
 			Center,
-			colWin,
-			bigTextFace,
+			g.colWin,
+			g.bigTextFace,
 			bigFontSizeLineSpacing,
 		)
 	}
 
 	// cursor for the current player
+	var playingStr string
+	if g.playing == PlayerX {
+		playingStr = "X"
+	} else {
+		playingStr = "O"
+	}
 	drawText(
 		screen,
-		g.playing,
+		playingStr,
 		float64(mx),
 		float64(my),
 		TopLeft,
-		colText,
-		normalTextFace,
+		g.colText,
+		g.normalTextFace,
 		fontSizeLineSpacing,
 	)
 }
@@ -139,31 +148,45 @@ func (g *Game) drawGrid(screen *ebiten.Image) {
 	for i := 1; i < gridCells; i++ {
 		// vertical lines
 		x := float32(i * gridCellSz)
-		vector.StrokeLine(screen, x, 0, x, float32(sWidth), lineWidth, colGrid, true)
+		vector.StrokeLine(screen, x, 0, x, float32(sWidth), lineWidth, g.colGrid, true)
 
 		// horizontal lines
 		y := float32(i * gridCellSz)
-		vector.StrokeLine(screen, 0, y, float32(sWidth), y, lineWidth, colGrid, true)
+		vector.StrokeLine(screen, 0, y, float32(sWidth), y, lineWidth, g.colGrid, true)
 	}
 }
 
-func (g *Game) drawSymbol(screen *ebiten.Image, cx, cy int, symbol string) {
+func (g *Game) drawSymbol(screen *ebiten.Image, cx, cy int, symbol Player) {
 	size := float32(gridCellSz/2 - cellPad)
 	x := float32(cx*gridCellSz + gridCellSz/2)
 	y := float32(cy*gridCellSz + gridCellSz/2)
 
-	if symbol == cross {
+	switch symbol {
+	case PlayerX:
 		g.drawX(screen, x, y, size)
-	} else if symbol == circle {
+	case PlayerO:
 		g.drawO(screen, x, y, size)
+	case PlayerNone, PlayerTie:
+		// do nothing
 	}
 }
 
+func (g *Game) getWinMessage() string {
+	if g.win == PlayerTie {
+		return "Tie!"
+	}
+	winStr := "O"
+	if g.win == PlayerX {
+		winStr = "X"
+	}
+	return fmt.Sprintf("%s wins!", winStr)
+}
+
 func (g *Game) drawX(screen *ebiten.Image, cx, cy, size float32) {
-	vector.StrokeLine(screen, cx-size, cy-size, cx+size, cy+size, lineWidth, colX, true)
-	vector.StrokeLine(screen, cx+size, cy-size, cx-size, cy+size, lineWidth, colX, true)
+	vector.StrokeLine(screen, cx-size, cy-size, cx+size, cy+size, lineWidth, g.colX, true)
+	vector.StrokeLine(screen, cx+size, cy-size, cx-size, cy+size, lineWidth, g.colX, true)
 }
 
 func (g *Game) drawO(screen *ebiten.Image, cx, cy, size float32) {
-	vector.StrokeCircle(screen, cx, cy, size, lineWidth, colO, true)
+	vector.StrokeCircle(screen, cx, cy, size, lineWidth, g.colO, true)
 }

@@ -51,7 +51,7 @@ func (g *Game) updatePlay() error {
 		return nil
 	}
 
-	if g.board[cx][cy] != "" {
+	if g.board[cx][cy] != PlayerNone {
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func (g *Game) updatePlay() error {
 	g.playing = nxt
 
 	w := g.checkWin()
-	if w != "" {
+	if w != PlayerNone {
 		g.applyWinner(w)
 		return nil
 	}
