@@ -1,159 +1,140 @@
 package main
 
 import (
-	"github.com/hajimehoshi/ebiten/inpututil"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 func (g *Game) Update() error {
-	// ESC = quit the game
+	// shortcuts
+	// Escape: exit
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return ebiten.Termination
 	}
 
-	// R = full reset
+	// R: reset game state
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
-		*g = *NewGame()
+		g.fullReset()
 		return nil
 	}
 
-	// name input phase I just added
-	if g.entering {
-		// Get typed characters
-		chars := ebiten.AppendInputChars(nil)
-		for _, c := range chars {
-			if c == '\n' || c == '\r' {
-				continue
-			}
-			g.tempInput += string(c)
-		}
-
-		// Backspace
-		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.tempInput) > 0 {
-			g.tempInput = g.tempInput[:len(g.tempInput)-1]
-		}
-
-		// Enter -> validate the name
-		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-			if g.editingX {
-				if g.tempInput != "" {
-					g.playerXName = g.tempInput
-				}
-				g.tempInput = ""
-				g.editingX = false // switch to O
-			} else {
-				if g.tempInput != "" {
-					g.playerOName = g.tempInput
-				}
-				g.tempInput = ""
-				g.entering = false // done, we can play
-			}
-		}
-
-		// While entering names, we don't play
-		return nil
-	}
-
-	// === GAME OVER ===
-	if g.over {
-		// Left click = start a new game
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			g.resetBoard()
-		}
-		return nil
-	}
-
-	// === NORMAL GAME: click on a cell ===
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		mx, my := ebiten.CursorPosition()
-
-		if mx >= 0 && mx < ScreenSize && my >= 0 && my < ScreenSize {
-			cx := mx / CellSize
-			cy := my / CellSize
-
-			if g.board[cy][cx] == 0 { // empty cell
-				g.board[cy][cx] = g.player
-
-				// check if someone wins
-				if w := g.checkWinner(); w != 0 {
-					g.winner = w
-					g.over = true
-
-					if w == 1 {
-						g.pointsX++
-					} else if w == 2 {
-						g.pointsO++
-					}
-
-				} else if g.isBoardFull() {
-					g.winner = 3 // draw
-					g.over = true
-				} else {
-					// switch player
-					if g.player == 1 {
-						g.player = 2
-					} else {
-						g.player = 1
-					}
-				}
-			}
-		}
+	switch g.state {
+	case StateNameInput:
+		return g.updateNameInput()
+	case StatePlaying:
+		return g.updatePlaying()
+	case StateGameOver:
+		return g.updateGameOver()
 	}
 
 	return nil
 }
 
-func (g *Game) resetBoard() {
-	g.board = [GridSize][GridSize]int{}
-	g.winner = 0
-	g.over = false
+func (g *Game) updateNameInput() error {
+	chars := ebiten.AppendInputChars(nil)
+	for _, c := range chars {
+		if c == '\n' || c == '\r' {
+			continue
+		}
+		g.inputBuffer += string(c)
+	}
 
-	if g.startPlayer == 1 {
-		g.startPlayer = 2
+	// Backspace: delete last character
+	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		if len(g.inputBuffer) > 0 {
+			g.inputBuffer = g.inputBuffer[:len(g.inputBuffer)-1]
+		}
+	}
+
+	// Enter: confirm name
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.confirmName()
+	}
+
+	return nil
+}
+
+func (g *Game) confirmName() {
+	name := g.inputBuffer
+	if name == "" {
+		// default names if empty
+		if g.editingPlayerX {
+			name = "X"
+		} else {
+			name = "O"
+		}
+	}
+
+	if g.editingPlayerX {
+		g.playerXName = name
+		g.editingPlayerX = false
+		g.inputBuffer = ""
 	} else {
-		g.startPlayer = 1
+		g.playerOName = name
+		g.state = StatePlaying
+		g.inputBuffer = ""
 	}
-	g.player = g.startPlayer
 }
 
-// check if X or O has won
-func (g *Game) checkWinner() int {
-	b := g.board
-
-	// rows
-	for y := 0; y < GridSize; y++ {
-		if b[y][0] != 0 && b[y][0] == b[y][1] && b[y][1] == b[y][2] {
-			return b[y][0]
-		}
+func (g *Game) updatePlaying() error {
+	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		return nil
 	}
 
-	// columns
-	for x := 0; x < GridSize; x++ {
-		if b[0][x] != 0 && b[0][x] == b[1][x] && b[1][x] == b[2][x] {
-			return b[0][x]
-		}
+	mx, my := ebiten.CursorPosition()
+	if !isInBounds(mx, my) {
+		return nil
 	}
 
-	// main diagonal
-	if b[0][0] != 0 && b[0][0] == b[1][1] && b[1][1] == b[2][2] {
-		return b[0][0]
+	cx, cy := mx/CellSize, my/CellSize
+
+	// cell must be empty
+	if g.board[cy][cx] != PlayerNone {
+		return nil
 	}
 
-	// other diagonal
-	if b[0][2] != 0 && b[0][2] == b[1][1] && b[1][1] == b[2][0] {
-		return b[0][2]
+	g.board[cy][cx] = g.currentPlayer
+
+	winner := g.checkWinner()
+	if winner != WinnerNone {
+		g.handleGameEnd(winner)
+		return nil
 	}
 
-	return 0
+	g.switchPlayer()
+	return nil
 }
 
-func (g *Game) isBoardFull() bool {
-	for y := 0; y < GridSize; y++ {
-		for x := 0; x < GridSize; x++ {
-			if g.board[y][x] == 0 {
-				return false
-			}
-		}
+func (g *Game) updateGameOver() error {
+	// click to restart
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.resetBoard()
 	}
-	return true
+	return nil
+}
+
+func (g *Game) switchPlayer() {
+	if g.currentPlayer == PlayerX {
+		g.currentPlayer = PlayerO
+	} else {
+		g.currentPlayer = PlayerX
+	}
+}
+
+func (g *Game) handleGameEnd(w Winner) {
+	g.winner = w
+	g.state = StateGameOver
+
+	switch w {
+	case WinnerX:
+		g.scoreX++
+	case WinnerO:
+		g.scoreO++
+	case WinnerNone, WinnerDraw:
+		// no score update
+	}
+}
+
+func isInBounds(x, y int) bool {
+	return x >= 0 && x < ScreenSize && y >= 0 && y < ScreenSize
 }
