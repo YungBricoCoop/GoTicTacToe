@@ -1,9 +1,15 @@
-# Go Tic Tac Toe
+# Go Tic Tac Toe Raycast
 
-Description : 3D Tic-Tac-Toe game using raycasting with the Ebiten library.
-References :
+## Goal 
+Our goal is to build a 3D Tic-Tac-Toe game using raycasting.
+Raycasting works by rendering vertical rectangles on the screen, where each rectangle's height represents the distance to an object in the scene, creating a 3D illusion.
 
-- https://lodev.org/cgtutor/raycasting.html
+Our main reference for understanding and implementing raycasting is this tutorial:
+https://lodev.org/cgtutor/raycasting.html
+
+Project website:
+https://yungbricocoop.github.io/GoTicTacToe/
+
 
 ## Changelog
 
