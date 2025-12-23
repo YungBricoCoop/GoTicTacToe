@@ -11,10 +11,14 @@ import (
 )
 
 const (
-	ScreenSize = 480
-	WindowSize = 480
-	GridSize   = 3
-	CellSize   = ScreenSize / GridSize
+	ScreenSize  = 640
+	WindowSizeX = 1280
+	WindowSizeY = 720
+
+	MapGridSize = 22
+
+	GridSize = 3
+	CellSize = ScreenSize / GridSize
 
 	Margin              = 10
 	LineWidth           = 2
@@ -80,6 +84,10 @@ type Game struct {
 
 	// visuals
 	assets *VisualAssets
+
+	// raycasting world (minimap only for now)
+	worldMap  Map
+	playerPos Vec2 // ✅ CHAMP CORRECT (au lieu de playerPros)
 }
 
 func NewGame() *Game {
@@ -92,17 +100,19 @@ func NewGame() *Game {
 		playerOName:    "O",
 		editingPlayerX: true,
 		assets:         assets,
+
+		// minimap init
+		worldMap:  NewMap(),
+		playerPos: Vec2{X: 11.5, Y: 11.5}, // ✅ champ correct
 	}
 }
 
 func loadAssets() *VisualAssets {
-	// load font
 	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
 	if err != nil {
 		panic(err)
 	}
 
-	// create images
 	xImg := createXImage()
 	oImg := createOImage()
 
@@ -129,9 +139,7 @@ func createXImage() *ebiten.Image {
 	size := CellSize - doubleMargin
 	img := ebiten.NewImage(size, size)
 
-	// draw x
 	s := float32(size)
-
 	colX := color.RGBA{255, 100, 100, 255}
 
 	vector.StrokeLine(img, padding, padding, s-padding, s-padding, strokeWidth, colX, true)
@@ -150,13 +158,11 @@ func createOImage() *ebiten.Image {
 	size := CellSize - doubleMargin
 	img := ebiten.NewImage(size, size)
 
-	// draw o
 	s := float32(size)
 	center := s / half
 	radius := (s - padding) / half
 
 	colO := color.RGBA{100, 100, 255, 255}
-
 	vector.StrokeCircle(img, center, center, radius, strokeWidth, colO, true)
 
 	return img
@@ -181,7 +187,6 @@ func (g *Game) fullReset() {
 }
 
 func (g *Game) checkWinner() Winner {
-	// check rows and columns
 	for i := range GridSize {
 		if w := g.checkLine(g.board[i][0], g.board[i][1], g.board[i][2]); w != WinnerNone {
 			return w
@@ -191,7 +196,6 @@ func (g *Game) checkWinner() Winner {
 		}
 	}
 
-	// check diagonals
 	if w := g.checkLine(g.board[0][0], g.board[1][1], g.board[2][2]); w != WinnerNone {
 		return w
 	}
@@ -202,7 +206,6 @@ func (g *Game) checkWinner() Winner {
 	if g.isBoardFull() {
 		return WinnerDraw
 	}
-
 	return WinnerNone
 }
 

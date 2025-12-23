@@ -6,6 +6,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type TextAlign int
@@ -22,6 +23,25 @@ const (
 	BottomRight
 )
 
+/* ---------- helpers ---------- */
+
+func fillRect(dst *ebiten.Image, x, y, w, h float32, col color.Color) {
+	r, g, b, a := col.RGBA()
+	vector.FillRect(
+		dst,
+		x, y, w, h,
+		color.RGBA{
+			R: uint8(r >> 8),
+			G: uint8(g >> 8),
+			B: uint8(b >> 8),
+			A: uint8(a >> 8),
+		},
+		false,
+	)
+}
+
+/* ---------- draw loop ---------- */
+
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{30, 30, 30, 255})
 
@@ -34,24 +54,25 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawPlaying(screen)
 		g.drawGameOver(screen)
 	}
+
+	g.drawMinimap(screen)
 }
 
 func (g *Game) Layout(_, _ int) (int, int) {
 	return ScreenSize, ScreenSize
 }
 
+/* ---------- UI ---------- */
+
 func (g *Game) drawNameInput(screen *ebiten.Image) {
-	// title
 	g.drawText(screen, "Enter player names", NameInputX, NameInputY, TopLeft, color.White)
 
-	// current input label
 	label := "Player X: "
 	if !g.editingPlayerX {
 		label = "Player O: "
 	}
 	g.drawText(screen, label+g.inputBuffer, NameInputX, NameInputY+NameInputLineHeight, TopLeft, color.White)
 
-	// instructions
 	info := "Type name, Enter = OK, Backspace = delete"
 	g.drawText(screen, info, NameInputX, NameInputY+NameInputLineHeight*2, TopLeft, color.White)
 }
@@ -67,82 +88,11 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 }
 
 func (g *Game) drawScoreAndShortcuts(screen *ebiten.Image) {
-	scoreMsg := "Score " + g.playerXName + ": " + strconv.Itoa(g.scoreX) +
+	score := "Score " + g.playerXName + ": " + strconv.Itoa(g.scoreX) +
 		"  " + g.playerOName + ": " + strconv.Itoa(g.scoreO)
-	g.drawText(screen, scoreMsg, Margin, HeaderY, TopLeft, color.White)
 
+	g.drawText(screen, score, Margin, HeaderY, TopLeft, color.White)
 	g.drawText(screen, "ESC = quit", ScreenSize-Margin, HeaderY, TopRight, color.White)
-}
-
-func (g *Game) drawGrid(screen *ebiten.Image) {
-	lineColor := color.RGBA{200, 200, 200, 255}
-
-	for i := 1; i < GridSize; i++ {
-		// horizontal lines
-		h := ebiten.NewImage(ScreenSize, LineWidth)
-		h.Fill(lineColor)
-		opH := &ebiten.DrawImageOptions{}
-		opH.GeoM.Translate(0, float64(i*CellSize))
-		screen.DrawImage(h, opH)
-
-		// vertical lines
-		v := ebiten.NewImage(LineWidth, ScreenSize)
-		v.Fill(lineColor)
-		opV := &ebiten.DrawImageOptions{}
-		opV.GeoM.Translate(float64(i*CellSize), 0)
-		screen.DrawImage(v, opV)
-	}
-}
-
-func (g *Game) drawPieces(screen *ebiten.Image) {
-	for y := range GridSize {
-		for x := range GridSize {
-			cell := g.board[y][x]
-			if cell == PlayerNone {
-				continue
-			}
-
-			var img *ebiten.Image
-			if cell == PlayerX {
-				img = g.assets.XImage
-			} else {
-				img = g.assets.OImage
-			}
-
-			g.drawPieceAt(screen, img, x, y)
-		}
-	}
-}
-
-func (g *Game) drawPieceAt(screen *ebiten.Image, img *ebiten.Image, x, y int) {
-	const (
-		doubleMargin = 2 * Margin
-		half         = 2
-	)
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-
-	targetSize := CellSize - doubleMargin
-	scale := float64(targetSize) / float64(w)
-	if h > w {
-		scale = float64(targetSize) / float64(h)
-	}
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(scale, scale)
-
-	// center the image in the cell
-	imgW := float64(w) * scale
-	imgH := float64(h) * scale
-
-	cellX := float64(x * CellSize)
-	cellY := float64(y * CellSize)
-
-	px := cellX + (float64(CellSize)-imgW)/half
-	py := cellY + (float64(CellSize)-imgH)/half
-
-	op.GeoM.Translate(px, py)
-	screen.DrawImage(img, op)
 }
 
 func (g *Game) drawTurnInfo(screen *ebiten.Image) {
@@ -157,50 +107,133 @@ func (g *Game) drawTurnInfo(screen *ebiten.Image) {
 }
 
 func (g *Game) drawGameOver(screen *ebiten.Image) {
-	var msg string
-	switch g.winner {
-	case WinnerX:
+	msg := "Draw!"
+	if g.winner == WinnerX {
 		msg = g.playerXName + " wins!"
-	case WinnerO:
+	} else if g.winner == WinnerO {
 		msg = g.playerOName + " wins!"
-	case WinnerDraw:
-		msg = "Draw!"
-	case WinnerNone:
-		// should not happen in game over state
 	}
-
 	msg += " Click to restart"
 	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
 }
 
+/* ---------- grid & pieces ---------- */
+
+func (g *Game) drawGrid(screen *ebiten.Image) {
+	col := color.RGBA{200, 200, 200, 255}
+
+	for i := 1; i < GridSize; i++ {
+		fillRect(
+			screen,
+			0, float32(i*CellSize),
+			float32(ScreenSize), float32(LineWidth),
+			col,
+		)
+		fillRect(
+			screen,
+			float32(i*CellSize), 0,
+			float32(LineWidth), float32(ScreenSize),
+			col,
+		)
+	}
+}
+
+func (g *Game) drawPieces(screen *ebiten.Image) {
+	for y := range GridSize {
+		for x := range GridSize {
+			cell := g.board[y][x]
+			if cell == PlayerNone {
+				continue
+			}
+			img := g.assets.XImage
+			if cell == PlayerO {
+				img = g.assets.OImage
+			}
+			g.drawPieceAt(screen, img, x, y)
+		}
+	}
+}
+
+func (g *Game) drawPieceAt(screen *ebiten.Image, img *ebiten.Image, x, y int) {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	scale := float64(CellSize-2*Margin) / float64(w)
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scale, scale)
+
+	px := float64(x*CellSize) + (float64(CellSize)-float64(w)*scale)/2
+	py := float64(y*CellSize) + (float64(CellSize)-float64(h)*scale)/2
+
+	op.GeoM.Translate(px, py)
+	screen.DrawImage(img, op)
+}
+
+/* ---------- text ---------- */
+
 func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
-	const half = 2
 	op := &text.DrawOptions{}
 	op.LineSpacing = g.assets.NormalTextFace.Size + TextLineSpacing
 	op.ColorScale.ScaleWithColor(col)
 
 	w, h := text.Measure(msg, g.assets.NormalTextFace, op.LineSpacing)
 
-	var ox float64
-	switch align {
-	case TopLeft, CenterLeft, BottomLeft:
-		ox = 0
-	case TopCenter, Center, BottomCenter:
-		ox = -w / half
-	case TopRight, CenterRight, BottomRight:
-		ox = -w
+	if align == TopCenter || align == Center || align == BottomCenter {
+		x -= w / 2
+	} else if align == TopRight || align == CenterRight || align == BottomRight {
+		x -= w
 	}
 
-	var oy float64
-	switch align {
-	case TopLeft, TopCenter, TopRight:
-		oy = 0
-	case CenterLeft, Center, CenterRight:
-		oy = -h / half
-	case BottomLeft, BottomCenter, BottomRight:
-		oy = -h
+	if align == CenterLeft || align == Center || align == CenterRight {
+		y -= h / 2
+	} else if align == BottomLeft || align == BottomCenter || align == BottomRight {
+		y -= h
 	}
 
-	op.GeoM.Translate(x+ox, y+oy)
+	op.GeoM.Translate(x, y)
 	text.Draw(screen, msg, g.assets.NormalTextFace, op)
+}
+
+/* ---------- minimap ---------- */
+
+func (g *Game) drawMinimap(screen *ebiten.Image) {
+	const tilePx = 8.0
+	const pad = 10.0
+	const border = 2.0
+	const r = 2.0
+
+	mapW := float64(g.worldMap.Width()) * tilePx
+	mapH := float64(g.worldMap.Height()) * tilePx
+
+	originX := float64(ScreenSize) - pad - mapW
+	originY := pad
+
+	fillRect(
+		screen,
+		float32(originX-border), float32(originY-border),
+		float32(mapW+border*2), float32(mapH+border*2),
+		color.RGBA{0, 0, 0, 170},
+	)
+
+	for y := 0; y < g.worldMap.Height(); y++ {
+		for x := 0; x < g.worldMap.Width(); x++ {
+			if g.worldMap.Tiles[y][x] == 1 {
+				fillRect(
+					screen,
+					float32(originX+float64(x)*tilePx),
+					float32(originY+float64(y)*tilePx),
+					float32(tilePx), float32(tilePx),
+					color.RGBA{200, 200, 200, 230},
+				)
+			}
+		}
+	}
+
+	px := originX + g.playerPos.X*tilePx
+	py := originY + g.playerPos.Y*tilePx
+	fillRect(
+		screen,
+		float32(px-r), float32(py-r),
+		float32(r*2), float32(r*2),
+		color.RGBA{255, 80, 80, 255},
+	)
 }
