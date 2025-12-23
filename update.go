@@ -13,7 +13,8 @@ func (g *Game) Update() error {
 	}
 
 	// R: reset game state
-	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) &&
+		(ebiten.IsKeyPressed(ebiten.KeyControlLeft) || ebiten.IsKeyPressed(ebiten.KeyControlRight)) {
 		g.fullReset()
 		return nil
 	}

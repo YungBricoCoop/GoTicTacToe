@@ -152,7 +152,7 @@ func (g *Game) drawTurnInfo(screen *ebiten.Image) {
 	} else {
 		msg += g.playerOName
 	}
-	msg += "   (R = full reset)"
+	msg += "   (Ctrl + R = full reset)"
 	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
 }
 
