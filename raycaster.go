@@ -5,8 +5,24 @@ package main
 
 import "math"
 
+// RayHit represents the result of casting a ray in the raycasting engine.
+type RayHit struct {
+	// true if a wall was hit
+	hit bool
+	// grid cell coordinates of the hit wall
+	cellX int
+	cellY int
+	// distance from the player to the hit wall
+	distance float64
+	// hit position along the wall (between 0 and 1)
+	wallX float64
+	// side of the wall that was hit (0=vertical, 1=horizontal)
+	side int
+}
+
 // GetK returns the camera plane coefficient based on the player's field of view.
 func GetK(playerFOV float64) float64 {
+	//nolint:mnd // dividing the FOV by 2 is part of the standard projection plane computation
 	return math.Tan(playerFOV / 2)
 }
 
@@ -23,19 +39,21 @@ func GetRayDirection(playerDirection Vec2, k float64, cameraX float64) Vec2 {
 	return playerDirection.Add(plane.Scale(cameraX))
 }
 
-// CastRay runs the DDA algorithm to find the first wall hit by a ray.
-// It returns:
-// - hit: true if a wall was hit, false otherwise.
-// - hitPos: the exact position (x, y) where the ray hit the wall.
-// - hitCellX, hitCellY: the integer grid coordinates of the wall that was hit.
-// - distance: the perpendicular distance from the camera plane to the wall (corrected for fisheye effect).
-// - side: 0 for vertical wall (x-side), 1 for horizontal wall (y-side).
+// CastRay runs the DDA algorithm to cast a ray from the player position in the given direction.
+// It returns a RayHit containing information about the hit.
 func CastRay(
 	playerPosition Vec2,
 	rayDirection Vec2,
 	grid [][]int,
 	maxIterations int,
-) (hit bool, hitPosition Vec2, hitCellX, hitCellY int, distance float64, side int) {
+) RayHit {
+	// return no hit if the grid is empty
+	if isGridEmpty(grid) {
+		return noHit()
+	}
+
+	gridWidth := len(grid[0])
+	gridHeight := len(grid)
 
 	// grid cell the player is currently standing on
 	mapX := int(playerPosition.X)
@@ -76,11 +94,11 @@ func CastRay(
 		sideDistY = (float64(mapY) + 1.0 - playerPosition.Y) * deltaDistY
 	}
 
-	hit = false
-	side = 0 // 0=vertical wall hit, 1=horizontal wall hit
+	hit := false
+	side := 0 // 0=vertical wall hit, 1=horizontal wall hit
 
 	// dda loop
-	// each iteration moves the ray to the next closest grid boundary
+	// each iteration moves the ray to the next closest grid cell
 	for range maxIterations {
 		// define if the ray hits the next vertical or horizontal grid line first
 		if sideDistX < sideDistY {
@@ -96,34 +114,74 @@ func CastRay(
 		}
 
 		// stop if the ray leaves the map
-		if mapX < 0 || mapY < 0 || mapY >= len(grid) || mapX >= len(grid[0]) {
+		if isRayOutOfBounds(mapX, mapY, gridWidth, gridHeight) {
 			hit = false
 			break
 		}
 
 		// if the new cell contains a wall, we have a hit
-		if grid[mapY][mapX] > 0 {
+		if isGridCellNotEmpty(grid, mapX, mapY) {
 			hit = true
 			break
 		}
 	}
 
-	if hit {
-		// get the distance from the player to the wall
-		// we subtract delta step because the last step already crossed the wall
-		if side == 0 {
-			distance = sideDistX - deltaDistX
-		} else {
-			distance = sideDistY - deltaDistY
-		}
-
-		// compute the world position where the ray hit the wall
-		hitPosition = playerPosition.Add(rayDirection.Scale(distance))
-
-		// store which grid cell was hit
-		hitCellX = mapX
-		hitCellY = mapY
+	if !hit {
+		// return an infinite distance so callers can safely use it in a zBuffer
+		return noHit()
 	}
 
-	return hit, hitPosition, hitCellX, hitCellY, distance, side
+	// get the distance from the player to the wall
+	// we subtract delta step because the last step already crossed the wall
+	var distance float64
+	if side == 0 {
+		distance = sideDistX - deltaDistX
+	} else {
+		distance = sideDistY - deltaDistY
+	}
+
+	// store which grid cell was hit
+	hitCellX := mapX
+	hitCellY := mapY
+
+	// compute the hit position along the wall (between 0 and 1)
+	// for a vertical wall we use the y coordinate at the hit point
+	// for a horizontal wall we use the x coordinate at the hit point
+	var wallX float64
+	if side == 0 {
+		wallX = playerPosition.Y + distance*rayDirection.Y
+	} else {
+		wallX = playerPosition.X + distance*rayDirection.X
+	}
+	wallX -= math.Floor(wallX)
+
+	return RayHit{
+		hit:      true,
+		cellX:    hitCellX,
+		cellY:    hitCellY,
+		distance: distance,
+		wallX:    wallX,
+		side:     side,
+	}
+}
+
+// noHit returns a RayHit indicating that no wall was hit.
+func noHit() RayHit {
+	return RayHit{hit: false, distance: math.Inf(1)}
+}
+
+// isRayOutOfBounds returns true if the ray's grid coordinates are outside the map boundaries.
+func isRayOutOfBounds(mapX, mapY int, gridWidth, gridHeight int) bool {
+	return mapX < 0 || mapY < 0 || mapY >= gridHeight || mapX >= gridWidth
+}
+
+// isGridEmpty returns true if the grid is empty, if it has zero width or height.
+func isGridEmpty(grid [][]int) bool {
+	return len(grid) == 0 || len(grid[0]) == 0
+}
+
+// isGridCellNotEmpty returns true if the grid cell at (x, y) is not empty.
+// The cell is considered not empty if its value is greater than zero.
+func isGridCellNotEmpty(grid [][]int, x, y int) bool {
+	return grid[y][x] > 0
 }
