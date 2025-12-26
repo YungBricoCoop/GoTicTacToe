@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Elwan Mayencourt, Masami Morimura
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -9,7 +12,7 @@ import (
 func main() {
 	game := NewGame()
 
-	ebiten.SetWindowSize(WindowSize, WindowSize)
+	ebiten.SetWindowSize(WindowSizeX, WindowSizeY)
 	ebiten.SetWindowTitle("Tic-Tac-Toe")
 
 	if err := ebiten.RunGame(game); err != nil {
