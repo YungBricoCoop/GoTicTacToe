@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Elwan Mayencourt, Masami Morimura
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -6,6 +9,8 @@ import (
 )
 
 func (g *Game) Update() error {
+	g.minimap.Update()
+
 	// shortcuts
 	// Escape: exit
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {

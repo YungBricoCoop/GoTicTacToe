@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Elwan Mayencourt, Masami Morimura
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -50,12 +53,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawNameInput(screen)
 	case StatePlaying:
 		g.drawPlaying(screen)
+		g.minimap.Draw(screen, g)
 	case StateGameOver:
 		g.drawPlaying(screen)
 		g.drawGameOver(screen)
 	}
 
-	g.drawMinimap(screen)
 }
 
 func (g *Game) Layout(_, _ int) (int, int) {
@@ -191,49 +194,4 @@ func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align Te
 
 	op.GeoM.Translate(x, y)
 	text.Draw(screen, msg, g.assets.NormalTextFace, op)
-}
-
-/* ---------- minimap ---------- */
-
-func (g *Game) drawMinimap(screen *ebiten.Image) {
-	const tilePx = 8.0
-	const pad = 10.0
-	const border = 2.0
-	const r = 2.0
-
-	mapW := float64(g.worldMap.Width()) * tilePx
-	mapH := float64(g.worldMap.Height()) * tilePx
-
-	originX := float64(ScreenSize) - pad - mapW
-	originY := pad
-
-	fillRect(
-		screen,
-		float32(originX-border), float32(originY-border),
-		float32(mapW+border*2), float32(mapH+border*2),
-		color.RGBA{0, 0, 0, 170},
-	)
-
-	for y := 0; y < g.worldMap.Height(); y++ {
-		for x := 0; x < g.worldMap.Width(); x++ {
-			if g.worldMap.Tiles[y][x] == 1 {
-				fillRect(
-					screen,
-					float32(originX+float64(x)*tilePx),
-					float32(originY+float64(y)*tilePx),
-					float32(tilePx), float32(tilePx),
-					color.RGBA{200, 200, 200, 230},
-				)
-			}
-		}
-	}
-
-	px := originX + g.playerPos.X*tilePx
-	py := originY + g.playerPos.Y*tilePx
-	fillRect(
-		screen,
-		float32(px-r), float32(py-r),
-		float32(r*2), float32(r*2),
-		color.RGBA{255, 80, 80, 255},
-	)
 }

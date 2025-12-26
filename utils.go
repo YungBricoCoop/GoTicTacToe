@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Elwan Mayencourt, Masami Morimura
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -85,9 +88,11 @@ type Game struct {
 	// visuals
 	assets *VisualAssets
 
-	// raycasting world (minimap only for now)
+	// raycasting world (minimap)
 	worldMap  Map
-	playerPos Vec2 // ✅ CHAMP CORRECT (au lieu de playerPros)
+	playerPos Vec2
+
+	minimap Minimap
 }
 
 func NewGame() *Game {
@@ -101,9 +106,8 @@ func NewGame() *Game {
 		editingPlayerX: true,
 		assets:         assets,
 
-		// minimap init
 		worldMap:  NewMap(),
-		playerPos: Vec2{X: 11.5, Y: 11.5}, // ✅ champ correct
+		playerPos: Vec2{X: 11.5, Y: 11.5},
 	}
 }
 
