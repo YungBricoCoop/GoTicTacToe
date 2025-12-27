@@ -62,7 +62,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) Layout(_, _ int) (int, int) {
-	return ScreenSize, ScreenSize
+	return WindowSizeX, WindowSizeY
 }
 
 /* ---------- UI ---------- */
@@ -91,20 +91,17 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 }
 
 func (g *Game) drawScoreAndShortcuts(screen *ebiten.Image) {
-	score := "Score " + g.playerXName + ": " + strconv.Itoa(g.scoreX) +
-		"  " + g.playerOName + ": " + strconv.Itoa(g.scoreO)
+	pX := g.getPlayer(PlayerSymbolX)
+	pO := g.getPlayer(PlayerSymbolO)
+	score := "Score " + pX.name + ": " + strconv.Itoa(pX.score) +
+		"  " + pO.name + ": " + strconv.Itoa(pO.score)
 
 	g.drawText(screen, score, Margin, HeaderY, TopLeft, color.White)
-	g.drawText(screen, "ESC = quit", ScreenSize-Margin, HeaderY, TopRight, color.White)
+	g.drawText(screen, "ESC = quit", WindowSizeX-Margin, HeaderY, TopRight, color.White)
 }
 
 func (g *Game) drawTurnInfo(screen *ebiten.Image) {
-	msg := "Turn: "
-	if g.currentPlayer == PlayerX {
-		msg += g.playerXName
-	} else {
-		msg += g.playerOName
-	}
+	msg := "Turn: " + g.currentPlayer.name
 	msg += "   (Ctrl + R = full reset)"
 	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
 }
@@ -112,9 +109,9 @@ func (g *Game) drawTurnInfo(screen *ebiten.Image) {
 func (g *Game) drawGameOver(screen *ebiten.Image) {
 	msg := "Draw!"
 	if g.winner == WinnerX {
-		msg = g.playerXName + " wins!"
+		msg = g.getPlayer(PlayerSymbolX).name + " wins!"
 	} else if g.winner == WinnerO {
-		msg = g.playerOName + " wins!"
+		msg = g.getPlayer(PlayerSymbolO).name + " wins!"
 	}
 	msg += " Click to restart"
 	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
@@ -129,13 +126,13 @@ func (g *Game) drawGrid(screen *ebiten.Image) {
 		fillRect(
 			screen,
 			0, float32(i*CellSize),
-			float32(ScreenSize), float32(LineWidth),
+			float32(WindowSizeY), float32(LineWidth),
 			col,
 		)
 		fillRect(
 			screen,
 			float32(i*CellSize), 0,
-			float32(LineWidth), float32(ScreenSize),
+			float32(LineWidth), float32(WindowSizeY),
 			col,
 		)
 	}
@@ -145,11 +142,11 @@ func (g *Game) drawPieces(screen *ebiten.Image) {
 	for y := range GridSize {
 		for x := range GridSize {
 			cell := g.board[y][x]
-			if cell == PlayerNone {
+			if cell == PlayerSymbolNone {
 				continue
 			}
 			img := g.assets.XImage
-			if cell == PlayerO {
+			if cell == PlayerSymbolO {
 				img = g.assets.OImage
 			}
 			g.drawPieceAt(screen, img, x, y)

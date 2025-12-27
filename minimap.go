@@ -11,9 +11,7 @@ import (
 
 type Minimap struct{}
 
-// drawMinimap renders the minimap at the top-right corner of the screen
-
-func (m *Minimap) Update() {
+func (m *Minimap) Update(g *Game) {
 	//  nothing dynamic to update
 }
 
@@ -27,7 +25,7 @@ func (m *Minimap) Draw(screen *ebiten.Image, g *Game) {
 	mapW := float64(g.worldMap.Width()) * tilePx
 	mapH := float64(g.worldMap.Height()) * tilePx
 
-	originX := float64(ScreenSize) - pad - mapW
+	originX := float64(WindowSizeX) - pad - mapW
 	originY := pad
 
 	fillRect(
@@ -51,12 +49,26 @@ func (m *Minimap) Draw(screen *ebiten.Image, g *Game) {
 		}
 	}
 
-	px := originX + g.playerPos.X*tilePx
-	py := originY + g.playerPos.Y*tilePx
-	fillRect(
-		screen,
-		float32(px-r), float32(py-r),
-		float32(r*2), float32(r*2),
-		color.RGBA{255, 80, 80, 255},
-	)
+	// draw each player
+	for _, obj := range g.gameObjects {
+		// if it's a player
+		if p, ok := obj.(*Player); ok {
+			px := originX + p.pos.X*tilePx
+			py := originY + p.pos.Y*tilePx
+			var col color.RGBA
+			if p.symbol == PlayerSymbolX {
+				col = color.RGBA{80, 80, 255, 255}
+			} else if p.symbol == PlayerSymbolO {
+				col = color.RGBA{80, 255, 80, 255}
+			} else {
+				col = color.RGBA{200, 200, 200, 255}
+			}
+			fillRect(
+				screen,
+				float32(px-r), float32(py-r),
+				float32(r*2), float32(r*2),
+				col,
+			)
+		}
+	}
 }

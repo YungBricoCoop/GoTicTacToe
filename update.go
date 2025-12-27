@@ -9,7 +9,10 @@ import (
 )
 
 func (g *Game) Update() error {
-	g.minimap.Update()
+	// update all game objects
+	for _, obj := range g.gameObjects {
+		obj.Update(g)
+	}
 
 	// shortcuts
 	// Escape: exit
@@ -72,11 +75,11 @@ func (g *Game) confirmName() {
 	}
 
 	if g.editingPlayerX {
-		g.playerXName = name
+		g.getPlayer(PlayerSymbolX).name = name
 		g.editingPlayerX = false
 		g.inputBuffer = ""
 	} else {
-		g.playerOName = name
+		g.getPlayer(PlayerSymbolO).name = name
 		g.state = StatePlaying
 		g.inputBuffer = ""
 	}
@@ -95,11 +98,11 @@ func (g *Game) updatePlaying() error {
 	cx, cy := mx/CellSize, my/CellSize
 
 	// cell must be empty
-	if g.board[cy][cx] != PlayerNone {
+	if g.board[cy][cx] != PlayerSymbolNone {
 		return nil
 	}
 
-	g.board[cy][cx] = g.currentPlayer
+	g.board[cy][cx] = g.currentPlayer.symbol
 
 	winner := g.checkWinner()
 	if winner != WinnerNone {
@@ -120,10 +123,10 @@ func (g *Game) updateGameOver() error {
 }
 
 func (g *Game) switchPlayer() {
-	if g.currentPlayer == PlayerX {
-		g.currentPlayer = PlayerO
+	if g.currentPlayer.symbol == PlayerSymbolX {
+		g.currentPlayer = g.getPlayer(PlayerSymbolO)
 	} else {
-		g.currentPlayer = PlayerX
+		g.currentPlayer = g.getPlayer(PlayerSymbolX)
 	}
 }
 
@@ -133,14 +136,14 @@ func (g *Game) handleGameEnd(w Winner) {
 
 	switch w {
 	case WinnerX:
-		g.scoreX++
+		g.getPlayer(PlayerSymbolX).score++
 	case WinnerO:
-		g.scoreO++
+		g.getPlayer(PlayerSymbolO).score++
 	case WinnerNone, WinnerDraw:
 		// no score update
 	}
 }
 
 func isInBounds(x, y int) bool {
-	return x >= 0 && x < ScreenSize && y >= 0 && y < ScreenSize
+	return x >= 0 && x < WindowSizeY && y >= 0 && y < WindowSizeY
 }

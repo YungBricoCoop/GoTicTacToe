@@ -14,19 +14,20 @@ import (
 )
 
 const (
-	ScreenSize  = 640
 	WindowSizeX = 1280
 	WindowSizeY = 720
+	TPS         = 60
+	DeltaTime   = 1.0 / TPS
 
 	MapGridSize = 22
 
 	GridSize = 3
-	CellSize = ScreenSize / GridSize
+	CellSize = WindowSizeY / GridSize
 
 	Margin              = 10
 	LineWidth           = 2
 	HeaderY             = 20
-	BottomY             = ScreenSize - 10
+	BottomY             = WindowSizeY - 10
 	TextLineSpacing     = 5
 	BigTextLineSpacing  = 20
 	DefaultFontSize     = 15
@@ -42,14 +43,6 @@ const (
 	StateNameInput GameState = iota
 	StatePlaying
 	StateGameOver
-)
-
-type Player int
-
-const (
-	PlayerNone Player = iota
-	PlayerX
-	PlayerO
 )
 
 type Winner int
@@ -71,15 +64,9 @@ type VisualAssets struct {
 type Game struct {
 	// state
 	state         GameState
-	board         [GridSize][GridSize]Player
-	currentPlayer Player
+	board         [GridSize][GridSize]PlayerSymbol
+	currentPlayer *Player
 	winner        Winner
-
-	// player info
-	playerXName string
-	playerOName string
-	scoreX      int
-	scoreO      int
 
 	// input state
 	inputBuffer    string
@@ -89,26 +76,31 @@ type Game struct {
 	assets *VisualAssets
 
 	// raycasting world (minimap)
-	worldMap  Map
-	playerPos Vec2
+	worldMap Map
 
 	minimap Minimap
+
+	gameObjects []GameObject
 }
 
 func NewGame() *Game {
 	assets := loadAssets()
 
-	return &Game{
+	pX := NewPlayer(11.5, 11.5, PlayerSymbolX, "X")
+	pO := NewPlayer(15.5, 15.5, PlayerSymbolO, "O")
+
+	g := &Game{
 		state:          StateNameInput,
-		currentPlayer:  PlayerX,
-		playerXName:    "X",
-		playerOName:    "O",
+		currentPlayer:  pX,
 		editingPlayerX: true,
 		assets:         assets,
 
-		worldMap:  NewMap(),
-		playerPos: Vec2{X: 11.5, Y: 11.5},
+		worldMap: NewMap(),
 	}
+
+	g.gameObjects = append(g.gameObjects, &g.minimap, pX, pO)
+
+	return g
 }
 
 func loadAssets() *VisualAssets {
@@ -173,21 +165,32 @@ func createOImage() *ebiten.Image {
 }
 
 func (g *Game) resetBoard() {
-	g.board = [GridSize][GridSize]Player{}
+	g.board = [GridSize][GridSize]PlayerSymbol{}
 	g.winner = WinnerNone
 	g.state = StatePlaying
-	g.currentPlayer = PlayerX
+	g.currentPlayer = g.getPlayer(PlayerSymbolX)
 }
 
 func (g *Game) fullReset() {
 	g.resetBoard()
-	g.scoreX = 0
-	g.scoreO = 0
+	pX := g.getPlayer(PlayerSymbolX)
+	pO := g.getPlayer(PlayerSymbolO)
+	pX.score = 0
+	pO.score = 0
 	g.state = StateNameInput
 	g.editingPlayerX = true
 	g.inputBuffer = ""
-	g.playerXName = "X"
-	g.playerOName = "O"
+	pX.name = "X"
+	pO.name = "O"
+}
+
+func (g *Game) getPlayer(s PlayerSymbol) *Player {
+	for _, obj := range g.gameObjects {
+		if p, ok := obj.(*Player); ok && p.symbol == s {
+			return p
+		}
+	}
+	return nil
 }
 
 func (g *Game) checkWinner() Winner {
@@ -213,9 +216,9 @@ func (g *Game) checkWinner() Winner {
 	return WinnerNone
 }
 
-func (g *Game) checkLine(a, b, c Player) Winner {
-	if a != PlayerNone && a == b && b == c {
-		if a == PlayerX {
+func (g *Game) checkLine(a, b, c PlayerSymbol) Winner {
+	if a != PlayerSymbolNone && a == b && b == c {
+		if a == PlayerSymbolX {
 			return WinnerX
 		}
 		return WinnerO
@@ -226,7 +229,7 @@ func (g *Game) checkLine(a, b, c Player) Winner {
 func (g *Game) isBoardFull() bool {
 	for y := range GridSize {
 		for x := range GridSize {
-			if g.board[y][x] == PlayerNone {
+			if g.board[y][x] == PlayerSymbolNone {
 				return false
 			}
 		}
