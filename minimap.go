@@ -41,7 +41,7 @@ func (m *Minimap) Draw(screen *ebiten.Image, g *Game) {
 		}
 	}
 
-	// draw each player
+	// draw each player + direction arrow
 	for _, obj := range g.gameObjects {
 		p, ok := obj.(*Player)
 		if !ok {
