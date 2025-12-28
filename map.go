@@ -3,13 +3,13 @@
 
 package main
 
-// Map represents the world grid
-// convetion: 0 = empty, 1 = wall
+// Map represents the world grid.
+// Convention: 0 = empty, 1 = wall.
 type Map struct {
 	Tiles [][]int
 }
 
-// NewMap returns the default world map
+// NewMap returns the default world map.
 func NewMap() Map {
 	return Map{
 		Tiles: [][]int{

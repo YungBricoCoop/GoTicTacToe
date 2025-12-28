@@ -29,16 +29,15 @@ const (
 /* ---------- helpers ---------- */
 
 func fillRect(dst *ebiten.Image, x, y, w, h float32, col color.Color) {
-	r, g, b, a := col.RGBA()
+	c := color.RGBAModel.Convert(col)
+	rgba, ok := c.(color.RGBA)
+	if !ok {
+		rgba = color.RGBA{}
+	}
 	vector.FillRect(
 		dst,
 		x, y, w, h,
-		color.RGBA{
-			R: uint8(r >> 8),
-			G: uint8(g >> 8),
-			B: uint8(b >> 8),
-			A: uint8(a >> 8),
-		},
+		rgba,
 		false,
 	)
 }
@@ -46,7 +45,7 @@ func fillRect(dst *ebiten.Image, x, y, w, h float32, col color.Color) {
 /* ---------- draw loop ---------- */
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{30, 30, 30, 255})
+	screen.Fill(ColorBackground)
 
 	switch g.state {
 	case StateNameInput:
@@ -58,7 +57,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawPlaying(screen)
 		g.drawGameOver(screen)
 	}
-
 }
 
 func (g *Game) Layout(_, _ int) (int, int) {
@@ -81,8 +79,6 @@ func (g *Game) drawNameInput(screen *ebiten.Image) {
 }
 
 func (g *Game) drawPlaying(screen *ebiten.Image) {
-	g.drawGrid(screen)
-	g.drawPieces(screen)
 	g.drawScoreAndShortcuts(screen)
 
 	if g.state == StatePlaying {
@@ -108,84 +104,42 @@ func (g *Game) drawTurnInfo(screen *ebiten.Image) {
 
 func (g *Game) drawGameOver(screen *ebiten.Image) {
 	msg := "Draw!"
-	if g.winner == WinnerX {
+	switch g.winner {
+	case WinnerNone, WinnerDraw:
+		msg = "Draw!"
+	case WinnerX:
 		msg = g.getPlayer(PlayerSymbolX).name + " wins!"
-	} else if g.winner == WinnerO {
+	case WinnerO:
 		msg = g.getPlayer(PlayerSymbolO).name + " wins!"
 	}
 	msg += " Click to restart"
 	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
 }
 
-/* ---------- grid & pieces ---------- */
-
-func (g *Game) drawGrid(screen *ebiten.Image) {
-	col := color.RGBA{200, 200, 200, 255}
-
-	for i := 1; i < GridSize; i++ {
-		fillRect(
-			screen,
-			0, float32(i*CellSize),
-			float32(WindowSizeY), float32(LineWidth),
-			col,
-		)
-		fillRect(
-			screen,
-			float32(i*CellSize), 0,
-			float32(LineWidth), float32(WindowSizeY),
-			col,
-		)
-	}
-}
-
-func (g *Game) drawPieces(screen *ebiten.Image) {
-	for y := range GridSize {
-		for x := range GridSize {
-			cell := g.board[y][x]
-			if cell == PlayerSymbolNone {
-				continue
-			}
-			img := g.assets.XImage
-			if cell == PlayerSymbolO {
-				img = g.assets.OImage
-			}
-			g.drawPieceAt(screen, img, x, y)
-		}
-	}
-}
-
-func (g *Game) drawPieceAt(screen *ebiten.Image, img *ebiten.Image, x, y int) {
-	w, h := img.Bounds().Dx(), img.Bounds().Dy()
-	scale := float64(CellSize-2*Margin) / float64(w)
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(scale, scale)
-
-	px := float64(x*CellSize) + (float64(CellSize)-float64(w)*scale)/2
-	py := float64(y*CellSize) + (float64(CellSize)-float64(h)*scale)/2
-
-	op.GeoM.Translate(px, py)
-	screen.DrawImage(img, op)
-}
-
 /* ---------- text ---------- */
 
 func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
+	const half = 2
+
 	op := &text.DrawOptions{}
 	op.LineSpacing = g.assets.NormalTextFace.Size + TextLineSpacing
 	op.ColorScale.ScaleWithColor(col)
 
 	w, h := text.Measure(msg, g.assets.NormalTextFace, op.LineSpacing)
 
-	if align == TopCenter || align == Center || align == BottomCenter {
-		x -= w / 2
-	} else if align == TopRight || align == CenterRight || align == BottomRight {
+	switch align {
+	case TopLeft, CenterLeft, BottomLeft:
+	case TopCenter, Center, BottomCenter:
+		x -= w / half
+	case TopRight, CenterRight, BottomRight:
 		x -= w
 	}
 
-	if align == CenterLeft || align == Center || align == CenterRight {
-		y -= h / 2
-	} else if align == BottomLeft || align == BottomCenter || align == BottomRight {
+	switch align {
+	case TopLeft, TopCenter, TopRight:
+	case CenterLeft, Center, CenterRight:
+		y -= h / half
+	case BottomLeft, BottomCenter, BottomRight:
 		y -= h
 	}
 
