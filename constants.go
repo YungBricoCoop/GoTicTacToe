@@ -48,6 +48,9 @@ const (
 	DefaultPlayerXSpawnY = 11.5
 	DefaultPlayerOSpawnX = 15.5
 	DefaultPlayerOSpawnY = 15.5
+
+	TextureSize   = 64
+	TextureFolder = "assets/textures"
 )
 
 func defaultPlayerXSpawn() Vec2 {

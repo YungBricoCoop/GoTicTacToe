@@ -10,12 +10,15 @@ import (
 )
 
 func main() {
-	game := NewGame()
+	game, err := NewGame()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	ebiten.SetWindowSize(WindowSizeX, WindowSizeY)
 	ebiten.SetWindowTitle("Tic-Tac-Toe")
 
-	if err := ebiten.RunGame(game); err != nil {
-		log.Fatal(err)
+	if errG := ebiten.RunGame(game); errG != nil {
+		log.Fatal(errG)
 	}
 }
