@@ -95,14 +95,14 @@ func (g *Game) updatePlaying() error {
 		return nil
 	}
 
-	cx, cy := mx/CellSize, my/CellSize
+	/* 	cx, cy := mx/CellSize, my/CellSize
 
-	// cell must be empty
-	if g.board[cy][cx] != PlayerSymbolNone {
-		return nil
-	}
+	   	// cell must be empty
+	   	if g.board[cy][cx] != PlayerSymbolNone {
+	   		return nil
+	   	}
 
-	g.board[cy][cx] = g.currentPlayer.symbol
+	   	g.board[cy][cx] = g.currentPlayer.symbol */
 
 	winner := g.checkWinner()
 	if winner != WinnerNone {

@@ -68,7 +68,7 @@ func (p *Player) Update(g *Game) {
 	}
 }
 
-func (p *Player) Draw(screen *ebiten.Image, g *Game) {
+func (p *Player) Draw(_ *ebiten.Image, _ *Game) {
 	// nothing to draw for now, maybe we will draw an asset for each player
 }
 

@@ -5,36 +5,10 @@ package main
 
 import (
 	"bytes"
-	"image/color"
 
 	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
-)
-
-const (
-	WindowSizeX = 1280
-	WindowSizeY = 720
-	TPS         = 60
-	DeltaTime   = 1.0 / TPS
-
-	MapGridSize = 22
-
-	GridSize = 3
-	CellSize = WindowSizeY / GridSize
-
-	Margin              = 10
-	LineWidth           = 2
-	HeaderY             = 20
-	BottomY             = WindowSizeY - 10
-	TextLineSpacing     = 5
-	BigTextLineSpacing  = 20
-	DefaultFontSize     = 15
-	BigFontSize         = 100
-	NameInputX          = 10
-	NameInputY          = 40
-	NameInputLineHeight = 40
 )
 
 type GameState int
@@ -86,8 +60,10 @@ type Game struct {
 func NewGame() *Game {
 	assets := loadAssets()
 
-	pX := NewPlayer(11.5, 11.5, PlayerSymbolX, "X")
-	pO := NewPlayer(15.5, 15.5, PlayerSymbolO, "O")
+	spawnX := defaultPlayerXSpawn()
+	spawnO := defaultPlayerOSpawn()
+	pX := NewPlayer(spawnX.X, spawnX.Y, PlayerSymbolX, "X")
+	pO := NewPlayer(spawnO.X, spawnO.Y, PlayerSymbolO, "O")
 
 	g := &Game{
 		state:          StateNameInput,
@@ -109,12 +85,7 @@ func loadAssets() *VisualAssets {
 		panic(err)
 	}
 
-	xImg := createXImage()
-	oImg := createOImage()
-
 	return &VisualAssets{
-		XImage: xImg,
-		OImage: oImg,
 		NormalTextFace: &text.GoTextFace{
 			Source: fontSource,
 			Size:   DefaultFontSize,
@@ -124,44 +95,6 @@ func loadAssets() *VisualAssets {
 			Size:   BigFontSize,
 		},
 	}
-}
-
-func createXImage() *ebiten.Image {
-	const (
-		strokeWidth  = float32(10)
-		padding      = float32(20)
-		doubleMargin = 2 * Margin
-	)
-	size := CellSize - doubleMargin
-	img := ebiten.NewImage(size, size)
-
-	s := float32(size)
-	colX := color.RGBA{255, 100, 100, 255}
-
-	vector.StrokeLine(img, padding, padding, s-padding, s-padding, strokeWidth, colX, true)
-	vector.StrokeLine(img, s-padding, padding, padding, s-padding, strokeWidth, colX, true)
-
-	return img
-}
-
-func createOImage() *ebiten.Image {
-	const (
-		strokeWidth  = float32(10)
-		padding      = 40
-		doubleMargin = 2 * Margin
-		half         = 2
-	)
-	size := CellSize - doubleMargin
-	img := ebiten.NewImage(size, size)
-
-	s := float32(size)
-	center := s / half
-	radius := (s - padding) / half
-
-	colO := color.RGBA{100, 100, 255, 255}
-	vector.StrokeCircle(img, center, center, radius, strokeWidth, colO, true)
-
-	return img
 }
 
 func (g *Game) resetBoard() {
