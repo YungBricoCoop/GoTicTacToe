@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -28,11 +29,12 @@ const (
 	WinnerDraw
 )
 
-type VisualAssets struct {
+type Assets struct {
 	XImage         *ebiten.Image
 	OImage         *ebiten.Image
 	NormalTextFace *text.GoTextFace
 	BigTextFace    *text.GoTextFace
+	Textures       map[uint8][]*ebiten.Image
 }
 
 type Game struct {
@@ -47,7 +49,7 @@ type Game struct {
 	editingPlayerX bool
 
 	// visuals
-	assets *VisualAssets
+	assets *Assets
 
 	// raycasting world (minimap)
 	worldMap Map
@@ -57,8 +59,11 @@ type Game struct {
 	gameObjects []GameObject
 }
 
-func NewGame() *Game {
-	assets := loadAssets()
+func NewGame() (*Game, error) {
+	assets, err := loadAssets()
+	if err != nil {
+		return nil, err
+	}
 
 	spawnX := defaultPlayerXSpawn()
 	spawnO := defaultPlayerOSpawn()
@@ -76,16 +81,21 @@ func NewGame() *Game {
 
 	g.gameObjects = append(g.gameObjects, &g.minimap, pX, pO)
 
-	return g
+	return g, nil
 }
 
-func loadAssets() *VisualAssets {
+func loadAssets() (*Assets, error) {
 	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("load font: %w", err)
 	}
 
-	return &VisualAssets{
+	textures, err := LoadTextures()
+	if err != nil {
+		return nil, fmt.Errorf("load textures: %w", err)
+	}
+
+	return &Assets{
 		NormalTextFace: &text.GoTextFace{
 			Source: fontSource,
 			Size:   DefaultFontSize,
@@ -94,7 +104,8 @@ func loadAssets() *VisualAssets {
 			Source: fontSource,
 			Size:   BigFontSize,
 		},
-	}
+		Textures: textures,
+	}, nil
 }
 
 func (g *Game) resetBoard() {
