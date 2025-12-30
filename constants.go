@@ -70,4 +70,7 @@ var (
 
 	ColorMinimapPlayerX = color.RGBA{80, 80, 255, 255}
 	ColorMinimapPlayerO = color.RGBA{80, 255, 80, 255}
+
+	ColorCeil  = color.RGBA{25, 25, 30, 255}
+	ColorFloor = color.RGBA{20, 18, 18, 255}
 )

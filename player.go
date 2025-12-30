@@ -61,10 +61,10 @@ func (p *Player) Update(g *Game) {
 
 	// a/d for rotation
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		p.rotate(-rotSpeed)
+		p.rotate(rotSpeed)
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		p.rotate(rotSpeed)
+		p.rotate(-rotSpeed)
 	}
 }
 
