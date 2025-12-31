@@ -44,7 +44,7 @@ func GetRayDirection(playerDirection Vec2, k float64, cameraX float64) Vec2 {
 func CastRay(
 	playerPosition Vec2,
 	rayDirection Vec2,
-	grid [][]int,
+	grid [][]uint8,
 	maxIterations int,
 ) RayHit {
 	// return no hit if the grid is empty
@@ -176,12 +176,12 @@ func isRayOutOfBounds(mapX, mapY int, gridWidth, gridHeight int) bool {
 }
 
 // isGridEmpty returns true if the grid is empty, if it has zero width or height.
-func isGridEmpty(grid [][]int) bool {
+func isGridEmpty(grid [][]uint8) bool {
 	return len(grid) == 0 || len(grid[0]) == 0
 }
 
 // isGridCellNotEmpty returns true if the grid cell at (x, y) is not empty.
 // The cell is considered not empty if its value is greater than zero.
-func isGridCellNotEmpty(grid [][]int, x, y int) bool {
+func isGridCellNotEmpty(grid [][]uint8, x, y int) bool {
 	return grid[y][x] > 0
 }

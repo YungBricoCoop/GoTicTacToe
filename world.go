@@ -8,7 +8,6 @@
 package main
 
 import (
-	"image/color"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -25,13 +24,13 @@ func (w *World) Update(_ *Game) {
 
 func (w *World) Draw(screen *ebiten.Image, g *Game) {
 	// Render area = left square (720x720) to match WindowSizeY
-	viewX := float32(0)
-	viewY := float32(0)
-	viewW := WindowSizeY
+	viewX := float64(0)
+	viewY := float64(0)
+	viewW := WindowSizeX
 	viewH := WindowSizeY
 
-	fillRect(screen, viewX, viewY, float32(viewW), float32(viewH/2), ColorCeil)
-	fillRect(screen, viewX, viewY+float32(viewH/2), float32(viewW), float32(viewH/2), ColorFloor)
+	fillRect(screen, float32(viewX), float32(viewY), float32(viewW), float32(viewH/2), ColorCeil)
+	fillRect(screen, float32(viewX), float32(viewY)+float32(viewH/2), float32(viewW), float32(viewH/2), ColorFloor)
 
 	p := g.currentPlayer
 	if p == nil {
@@ -50,6 +49,19 @@ func (w *World) Draw(screen *ebiten.Image, g *Game) {
 			continue
 		}
 
+		// get the texture id
+		textureID := g.worldMap.Tiles[hit.cellY][hit.cellX]
+		textureSlices := g.assets.Textures[textureID]
+		textureSliceIndex := int(hit.wallX * float64(TextureSize))
+		// clamp textureSliceIndex to valid range
+		if textureSliceIndex < 0 {
+			textureSliceIndex = 0
+		} else if textureSliceIndex >= len(textureSlices) {
+			textureSliceIndex = len(textureSlices) - 1
+		}
+
+		texture := textureSlices[textureSliceIndex]
+
 		// Classic height = screenHeight / distance
 		lineH := float64(viewH) / hit.distance
 
@@ -64,18 +76,15 @@ func (w *World) Draw(screen *ebiten.Image, g *Game) {
 		}
 
 		// basic shading
-		wallCol := color.RGBA{180, 180, 180, 255}
-		if hit.side == 1 {
-			wallCol = color.RGBA{130, 130, 130, 255}
-		}
 
-		fillRect(
-			screen,
-			viewX+float32(x),
-			viewY+float32(drawStart),
-			1,
-			float32(drawEnd-drawStart),
-			wallCol,
-		)
+		op := &ebiten.DrawImageOptions{}
+
+		// Scale first, then translate. Calling Translate before Scale causes
+		// the translation to be scaled as well, which misplaces the slice.
+		scaleY := (drawEnd - drawStart) / float64(texture.Bounds().Dy())
+		op.GeoM.Scale(1, scaleY)
+		op.GeoM.Translate(viewX+float64(x), viewY+drawStart)
+
+		screen.DrawImage(texture, op)
 	}
 }
