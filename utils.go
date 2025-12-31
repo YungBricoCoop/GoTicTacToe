@@ -69,6 +69,7 @@ func NewGame() (*Game, error) {
 	spawnO := defaultPlayerOSpawn()
 	pX := NewPlayer(spawnX.X, spawnX.Y, PlayerSymbolX, "X")
 	pO := NewPlayer(spawnO.X, spawnO.Y, PlayerSymbolO, "O")
+	world := World{}
 
 	g := &Game{
 		state:          StateNameInput,
@@ -79,7 +80,7 @@ func NewGame() (*Game, error) {
 		worldMap: NewMap(),
 	}
 
-	g.gameObjects = append(g.gameObjects, &g.minimap, pX, pO)
+	g.gameObjects = append(g.gameObjects, &world, &g.minimap, pX, pO)
 
 	return g, nil
 }

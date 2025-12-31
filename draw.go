@@ -79,6 +79,11 @@ func (g *Game) drawNameInput(screen *ebiten.Image) {
 }
 
 func (g *Game) drawPlaying(screen *ebiten.Image) {
+	for _, obj := range g.gameObjects {
+		obj.Draw(screen, g)
+	}
+
+	// UI
 	g.drawScoreAndShortcuts(screen)
 
 	if g.state == StatePlaying {
