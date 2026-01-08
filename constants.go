@@ -6,10 +6,11 @@ package main
 import "image/color"
 
 const (
-	WindowSizeX = 1280
-	WindowSizeY = 720
-	TPS         = 60
-	DeltaTime   = 1.0 / TPS
+	WindowSizeX     = 1280
+	WindowSizeY     = 720
+	WindowSizeYDiv2 = WindowSizeY / 2
+	TPS             = 60
+	DeltaTime       = 1.0 / TPS
 
 	GridSize        = 3
 	MapGridSize     = 22
@@ -51,6 +52,9 @@ const (
 
 	TextureSize   = 64
 	TextureFolder = "assets/textures"
+	SpriteFolder  = "assets/sprites"
+
+	MaxRayIter = MapGridSize * MapGridSize
 )
 
 func defaultPlayerXSpawn() Vec2 {
@@ -63,13 +67,13 @@ func defaultPlayerOSpawn() Vec2 {
 
 //nolint:gochecknoglobals // colors
 var (
-	ColorBackground = color.RGBA{30, 30, 30, 255}
+	ColorBackground = color.RGBA{30, 30, 30, 100}
 
-	ColorMinimapBorder = color.RGBA{0, 0, 0, 255}
-	ColorMinimapWall   = color.RGBA{200, 200, 200, 230}
+	ColorMinimapBorder = color.RGBA{0, 0, 0, 100}
+	ColorMinimapWall   = color.RGBA{200, 200, 200, 100}
 
-	ColorMinimapPlayerX = color.RGBA{80, 80, 255, 255}
-	ColorMinimapPlayerO = color.RGBA{80, 255, 80, 255}
+	ColorMinimapPlayerX = color.RGBA{80, 80, 255, 100}
+	ColorMinimapPlayerO = color.RGBA{80, 255, 80, 100}
 
 	ColorCeil  = color.RGBA{25, 25, 30, 255}
 	ColorFloor = color.RGBA{20, 18, 18, 255}

@@ -66,6 +66,9 @@ func (p *Player) Update(g *Game) {
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		p.rotate(-rotSpeed)
 	}
+
+	//FIXME: Maybe this need another logic
+	g.assets.Sprites[uint8(p.symbol)] = Sprite{Img: g.assets.Sprites[uint8(p.symbol)].Img, Pos: p.pos}
 }
 
 func (p *Player) Draw(_ *ebiten.Image, _ *Game) {

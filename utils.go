@@ -30,11 +30,10 @@ const (
 )
 
 type Assets struct {
-	XImage         *ebiten.Image
-	OImage         *ebiten.Image
 	NormalTextFace *text.GoTextFace
 	BigTextFace    *text.GoTextFace
 	Textures       map[uint8][]*ebiten.Image
+	Sprites        map[uint8]Sprite
 }
 
 type Game struct {
@@ -69,7 +68,9 @@ func NewGame() (*Game, error) {
 	spawnO := defaultPlayerOSpawn()
 	pX := NewPlayer(spawnX.X, spawnX.Y, PlayerSymbolX, "X")
 	pO := NewPlayer(spawnO.X, spawnO.Y, PlayerSymbolO, "O")
-	world := World{}
+	world := World{
+		fovScale: GetK(PlayerFOV),
+	}
 
 	g := &Game{
 		state:          StateNameInput,
@@ -96,6 +97,15 @@ func loadAssets() (*Assets, error) {
 		return nil, fmt.Errorf("load textures: %w", err)
 	}
 
+	xSprite, err := LoadSprite("x-player.png")
+	if err != nil {
+		return nil, fmt.Errorf("load sprite x-player.png: %w", err)
+	}
+	oSprite, err := LoadSprite("o-player.png")
+	if err != nil {
+		return nil, fmt.Errorf("load sprite o-player.png: %w", err)
+	}
+
 	return &Assets{
 		NormalTextFace: &text.GoTextFace{
 			Source: fontSource,
@@ -106,6 +116,10 @@ func loadAssets() (*Assets, error) {
 			Size:   BigFontSize,
 		},
 		Textures: textures,
+		Sprites: map[uint8]Sprite{
+			uint8(PlayerSymbolX): {Img: xSprite, Pos: Vec2{X: 11.5, Y: 7}},
+			uint8(PlayerSymbolO): {Img: oSprite, Pos: Vec2{X: 3, Y: 4}},
+		},
 	}, nil
 }
 

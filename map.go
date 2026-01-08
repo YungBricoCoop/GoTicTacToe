@@ -49,3 +49,10 @@ func (m Map) Width() int {
 func (m Map) Height() int {
 	return len(m.Tiles)
 }
+
+func (m Map) GetTile(x, y int) uint8 {
+	if y < 0 || y >= m.Height() || x < 0 || x >= m.Width() {
+		return 1 // out of bounds is wall
+	}
+	return m.Tiles[y][x]
+}

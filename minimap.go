@@ -29,7 +29,7 @@ func (m *Minimap) Draw(screen *ebiten.Image, g *Game) {
 
 	for y := range mapHCells {
 		for x := range mapWCells {
-			if g.worldMap.Tiles[y][x] == MinimapWallValue {
+			if g.worldMap.Tiles[y][x] >= MinimapWallValue {
 				fillRect(
 					screen,
 					float32(MinimapPosX+float64(x)*MinimapGridCellSize),
