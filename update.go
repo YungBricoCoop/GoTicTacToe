@@ -86,25 +86,27 @@ func (g *Game) confirmName() {
 }
 
 func (g *Game) updatePlaying() error {
-	if !inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyE) {
 		return nil
 	}
 
-	mx, my := ebiten.CursorPosition()
-	if !isInBounds(mx, my) {
+	pos := g.currentPlayer.pos
+	cx := int(pos.X / MapRoomStride)
+	cy := int(pos.Y / MapRoomStride)
+
+	// check if within board bounds section
+	if cx < 0 || cx >= GridSize || cy < 0 || cy >= GridSize {
 		return nil
 	}
 
-	/* 	cx, cy := mx/CellSize, my/CellSize
+	// cell must be empty
+	if g.board[cy][cx] != PlayerSymbolNone {
+		return nil
+	}
 
-	   	// cell must be empty
-	   	if g.board[cy][cx] != PlayerSymbolNone {
-	   		return nil
-	   	}
+	g.board[cy][cx] = g.currentPlayer.symbol
 
-	   	g.board[cy][cx] = g.currentPlayer.symbol */
-
-	winner := g.checkWinner()
+	winner := g.board.CheckWinner()
 	if winner != WinnerNone {
 		g.handleGameEnd(winner)
 		return nil
@@ -142,8 +144,4 @@ func (g *Game) handleGameEnd(w Winner) {
 	case WinnerNone, WinnerDraw:
 		// no score update
 	}
-}
-
-func isInBounds(x, y int) bool {
-	return x >= 0 && x < WindowSizeY && y >= 0 && y < WindowSizeY
 }

@@ -12,6 +12,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
+//TODO: implement sounds (walking, placing symbol, win, lose, draw)
+//TODO: maybe: implement monsters that chase players
+
 type GameState int
 
 const (
@@ -33,13 +36,15 @@ type Assets struct {
 	NormalTextFace *text.GoTextFace
 	BigTextFace    *text.GoTextFace
 	Textures       map[uint8][]*ebiten.Image
-	Sprites        map[uint8]Sprite
+	Sprites        map[PlayerSymbol]Sprite
+	XSymbolImg     *ebiten.Image
+	OSymbolImg     *ebiten.Image
 }
 
 type Game struct {
 	// state
 	state         GameState
-	board         [GridSize][GridSize]PlayerSymbol
+	board         Board
 	currentPlayer *Player
 	winner        Winner
 
@@ -58,6 +63,7 @@ type Game struct {
 	gameObjects []GameObject
 }
 
+// NewGame creates a new Game instance with initialized assets and players.
 func NewGame() (*Game, error) {
 	assets, err := loadAssets()
 	if err != nil {
@@ -106,6 +112,16 @@ func loadAssets() (*Assets, error) {
 		return nil, fmt.Errorf("load sprite o-player.png: %w", err)
 	}
 
+	xSymbol, err := LoadSprite("x.png")
+	if err != nil {
+		return nil, fmt.Errorf("load sprite x.png: %w", err)
+	}
+
+	oSymbol, err := LoadSprite("o.png")
+	if err != nil {
+		return nil, fmt.Errorf("load sprite o.png: %w", err)
+	}
+
 	return &Assets{
 		NormalTextFace: &text.GoTextFace{
 			Source: fontSource,
@@ -116,15 +132,18 @@ func loadAssets() (*Assets, error) {
 			Size:   BigFontSize,
 		},
 		Textures: textures,
-		Sprites: map[uint8]Sprite{
-			uint8(PlayerSymbolX): {Img: xSprite, Pos: Vec2{X: 11.5, Y: 7}},
-			uint8(PlayerSymbolO): {Img: oSprite, Pos: Vec2{X: 3, Y: 4}},
+		Sprites: map[PlayerSymbol]Sprite{
+			PlayerSymbolX:    {Img: xSprite, Pos: Vec2{X: InitialSpriteXPosX, Y: InitialSpriteXPosY}},
+			PlayerSymbolO:    {Img: oSprite, Pos: Vec2{X: InitialSpriteOPosX, Y: InitialSpriteOPosY}},
+			PlayerSymbolNone: {Img: nil, Pos: Vec2{}},
 		},
+		XSymbolImg: xSymbol,
+		OSymbolImg: oSymbol,
 	}, nil
 }
 
 func (g *Game) resetBoard() {
-	g.board = [GridSize][GridSize]PlayerSymbol{}
+	g.board.Reset()
 	g.winner = WinnerNone
 	g.state = StatePlaying
 	g.currentPlayer = g.getPlayer(PlayerSymbolX)
@@ -143,6 +162,7 @@ func (g *Game) fullReset() {
 	pO.name = "O"
 }
 
+// FIXME: This might not need to exists.
 func (g *Game) getPlayer(s PlayerSymbol) *Player {
 	for _, obj := range g.gameObjects {
 		if p, ok := obj.(*Player); ok && p.symbol == s {
@@ -150,48 +170,4 @@ func (g *Game) getPlayer(s PlayerSymbol) *Player {
 		}
 	}
 	return nil
-}
-
-func (g *Game) checkWinner() Winner {
-	for i := range GridSize {
-		if w := g.checkLine(g.board[i][0], g.board[i][1], g.board[i][2]); w != WinnerNone {
-			return w
-		}
-		if w := g.checkLine(g.board[0][i], g.board[1][i], g.board[2][i]); w != WinnerNone {
-			return w
-		}
-	}
-
-	if w := g.checkLine(g.board[0][0], g.board[1][1], g.board[2][2]); w != WinnerNone {
-		return w
-	}
-	if w := g.checkLine(g.board[0][2], g.board[1][1], g.board[2][0]); w != WinnerNone {
-		return w
-	}
-
-	if g.isBoardFull() {
-		return WinnerDraw
-	}
-	return WinnerNone
-}
-
-func (g *Game) checkLine(a, b, c PlayerSymbol) Winner {
-	if a != PlayerSymbolNone && a == b && b == c {
-		if a == PlayerSymbolX {
-			return WinnerX
-		}
-		return WinnerO
-	}
-	return WinnerNone
-}
-
-func (g *Game) isBoardFull() bool {
-	for y := range GridSize {
-		for x := range GridSize {
-			if g.board[y][x] == PlayerSymbolNone {
-				return false
-			}
-		}
-	}
-	return true
 }

@@ -6,18 +6,18 @@ package main
 import "math"
 
 // RayHit represents the result of casting a ray in the raycasting engine.
+// hit indicates if a wall was hit.
+// cellX and cellY are the grid coordinates of the hit cell.
+// distance is the distance from the ray origin to the hit point.
+// wallX is the exact position along the wall where the ray hit (between 0 and 1).
+// side indicates whether a vertical (0) or horizontal (1) wall was hit.
 type RayHit struct {
-	// true if a wall was hit
-	hit bool
-	// grid cell coordinates of the hit wall
-	cellX int
-	cellY int
-	// distance from the player to the hit wall
+	hit      bool
+	cellX    int
+	cellY    int
 	distance float64
-	// hit position along the wall (between 0 and 1)
-	wallX float64
-	// side of the wall that was hit (0=vertical, 1=horizontal)
-	side int
+	wallX    float64
+	side     int
 }
 
 // GetK returns the camera plane coefficient based on the player's field of view.

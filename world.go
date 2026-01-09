@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type World struct {
@@ -26,7 +27,7 @@ func (w *World) Draw(screen *ebiten.Image, g *Game) {
 	viewY := float64(0)
 
 	drawCeiling(screen, viewX, viewY, WindowSizeX, WindowSizeYDiv2)
-	drawFloor(screen, viewX, viewY+float64(WindowSizeYDiv2), WindowSizeX, WindowSizeYDiv2)
+	drawFloor(screen, viewX, viewY+float64(WindowSizeY)/HalfDivisor, WindowSizeX, WindowSizeYDiv2)
 
 	p := g.currentPlayer
 	if p == nil {
@@ -34,17 +35,30 @@ func (w *World) Draw(screen *ebiten.Image, g *Game) {
 	}
 
 	// initialize buffers once
+	w.ensureBuffers()
+
+	w.rayCastAndDrawWalls(screen, g, viewX, viewY)
+
+	spritesToDraw := w.gatherSprites(g)
+
+	drawSprites(screen, w.zBuffer, spritesToDraw, p, w.fovScale, viewX, viewY, WindowSizeX, WindowSizeY)
+}
+
+func (w *World) ensureBuffers() {
 	if w.zBuffer == nil || len(w.zBuffer) != WindowSizeX {
 		w.zBuffer = make([]float64, WindowSizeX)
 	}
 	if w.cameraX == nil || len(w.cameraX) != WindowSizeX {
 		w.cameraX = make([]float64, WindowSizeX)
-		for i := 0; i < WindowSizeX; i++ {
+		for i := range WindowSizeX {
 			w.cameraX[i] = GetCameraX(i, WindowSizeX)
 		}
 	}
+}
 
-	for x := 0; x < WindowSizeX; x++ {
+func (w *World) rayCastAndDrawWalls(screen *ebiten.Image, g *Game, viewX, viewY float64) {
+	p := g.currentPlayer
+	for x := range WindowSizeX {
 		rayDir := GetRayDirection(p.dir, w.fovScale, w.cameraX[x])
 
 		hit := CastRay(p.pos, rayDir, g.worldMap.Tiles, MaxRayIter)
@@ -72,8 +86,8 @@ func (w *World) Draw(screen *ebiten.Image, g *Game) {
 		// classic height = screenHeight / distance
 		lineH := float64(WindowSizeY) / hit.distance
 
-		drawStart := WindowSizeYDiv2 - lineH/2
-		drawEnd := WindowSizeYDiv2 + lineH/2
+		drawStart := WindowSizeYDiv2 - lineH/HalfDivisor
+		drawEnd := WindowSizeYDiv2 + lineH/HalfDivisor
 
 		if drawStart < 0 {
 			drawStart = 0
@@ -91,28 +105,87 @@ func (w *World) Draw(screen *ebiten.Image, g *Game) {
 		op.GeoM.Translate(viewX+float64(x), viewY+drawStart)
 		screen.DrawImage(texture, op)
 	}
-
-	drawSprites(screen, w.zBuffer, g.assets, p, w.fovScale, viewX, viewY, WindowSizeX, WindowSizeY)
 }
 
-func drawCeiling(screen *ebiten.Image, viewX, viewY float64, WindowSizeX, viewH int) {
-	fillRect(screen, float32(viewX), float32(viewY), float32(WindowSizeX), float32(viewH), ColorCeil)
+func (w *World) gatherSprites(g *Game) []Sprite {
+	sprites := w.gatherPlayerSprites(g)
+	sprites = append(sprites, w.gatherBoardSprites(g)...)
+	return sprites
 }
 
-func drawFloor(screen *ebiten.Image, viewX, viewY float64, WindowSizeX, viewH int) {
-	fillRect(screen, float32(viewX), float32(viewY), float32(WindowSizeX), float32(viewH), ColorFloor)
+func (w *World) gatherPlayerSprites(g *Game) []Sprite {
+	var sprites []Sprite
+	p := g.currentPlayer
+	// 1. Other players
+	for _, obj := range g.gameObjects {
+		if otherPlayer, ok := obj.(*Player); ok {
+			if otherPlayer == p {
+				continue // Don't draw self (although first person usually doesn't show self anyway)
+			}
+			// Find the sprite for this player
+			if s, found := g.assets.Sprites[otherPlayer.symbol]; found {
+				if s.Img != nil {
+					sprites = append(sprites, Sprite{
+						Pos: otherPlayer.pos,
+						Img: s.Img,
+					})
+				}
+			}
+		}
+	}
+	return sprites
+}
+
+func (w *World) gatherBoardSprites(g *Game) []Sprite {
+	var sprites []Sprite
+	// 2. Board symbols (X and O placed on the grid)
+	for y := range GridSize {
+		for x := range GridSize {
+			sym := g.board[y][x]
+
+			var img *ebiten.Image
+			switch sym {
+			case PlayerSymbolX:
+				img = g.assets.XSymbolImg
+			case PlayerSymbolO:
+				img = g.assets.OSymbolImg
+			case PlayerSymbolNone:
+				continue
+			}
+
+			if img != nil {
+				// Calculate world position for the symbol
+				// Center of the room
+				posX := float64(x)*MapRoomStride + MapRoomOffset
+				posY := float64(y)*MapRoomStride + MapRoomOffset
+				sprites = append(sprites, Sprite{
+					Pos: Vec2{X: posX, Y: posY},
+					Img: img,
+				})
+			}
+		}
+	}
+	return sprites
+}
+
+func drawCeiling(screen *ebiten.Image, viewX, viewY float64, width, viewH int) {
+	vector.FillRect(screen, float32(viewX), float32(viewY), float32(width), float32(viewH), ColorCeil, false)
+}
+
+func drawFloor(screen *ebiten.Image, viewX, viewY float64, width, viewH int) {
+	vector.FillRect(screen, float32(viewX), float32(viewY), float32(width), float32(viewH), ColorFloor, false)
 }
 
 func drawSprites(
 	screen *ebiten.Image,
 	zBuffer []float64,
-	assets *Assets,
+	sprites []Sprite,
 	player *Player,
 	fovScale float64,
 	viewportX, viewportY float64,
 	viewportWidth, viewportHeight int,
 ) {
-	if player == nil || assets == nil || len(assets.Sprites) == 0 || len(zBuffer) != viewportWidth {
+	if player == nil || len(sprites) == 0 || len(zBuffer) != viewportWidth {
 		return
 	}
 
@@ -120,10 +193,9 @@ func drawSprites(
 	plane := player.dir.Perp().Scale(fovScale)
 
 	// sort sprites from far to near to handle transparency correctly
-	sortedSprites := make([]Sprite, 0, len(assets.Sprites))
-	for _, sprite := range assets.Sprites {
-		sortedSprites = append(sortedSprites, sprite)
-	}
+	sortedSprites := make([]Sprite, len(sprites))
+	copy(sortedSprites, sprites)
+
 	slices.SortFunc(sortedSprites, func(a, b Sprite) int {
 		distA := a.Pos.Sub(player.pos).Len2()
 		distB := b.Pos.Sub(player.pos).Len2()
@@ -140,78 +212,86 @@ func drawSprites(
 		if sprite.Img == nil {
 			continue
 		}
+		drawSingleSprite(screen, zBuffer, sprite, player, plane, viewportX, viewportY, viewportWidth, viewportHeight)
+	}
+}
 
-		// translate sprite position relative to camera
-		relativePos := sprite.Pos.Sub(player.pos)
+func drawSingleSprite(
+	screen *ebiten.Image,
+	zBuffer []float64,
+	sprite Sprite,
+	player *Player,
+	plane Vec2,
+	viewportX, viewportY float64,
+	viewportWidth, viewportHeight int,
+) {
+	// translate sprite position relative to camera
+	relativePos := sprite.Pos.Sub(player.pos)
 
-		// transform sprite with the inverse camera matrix
-		// [ planeX   dirX ] -1                                       [ dirY      -dirX ]
-		// [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
-		// [ planeY   dirY ]                                          [ -planeY  planeX ]
-		inverseDeterminant := 1.0 / (plane.X*player.dir.Y - player.dir.X*plane.Y)
+	// transform sprite with the inverse camera matrix
+	inverseDeterminant := 1.0 / (plane.X*player.dir.Y - player.dir.X*plane.Y)
 
-		transformX := inverseDeterminant * (player.dir.Y*relativePos.X - player.dir.X*relativePos.Y)
-		transformY := inverseDeterminant * (-plane.Y*relativePos.X + plane.X*relativePos.Y) // this is actually the depth inside the screen
+	transformX := inverseDeterminant * (player.dir.Y*relativePos.X - player.dir.X*relativePos.Y)
+	transformY := inverseDeterminant * (-plane.Y*relativePos.X + plane.X*relativePos.Y) // this is actually the depth inside the screen
 
-		if transformY <= 0 {
-			continue // sprite is behind the camera
+	if transformY <= 0 {
+		return // sprite is behind the camera
+	}
+
+	spriteScreenX := int((float64(viewportWidth) / HalfDivisor) * (1 + transformX/transformY))
+
+	// calculate sprite dimensions on screen, keeping aspect ratio square
+	spriteHeight := math.Abs(float64(viewportHeight) / transformY)
+	spriteWidth := spriteHeight
+	if spriteHeight < 1 || spriteWidth < 1 {
+		return
+	}
+
+	// calculate drawing bounds on screen
+	drawStartY := int(-spriteHeight/2 + float64(viewportHeight)/HalfDivisor)
+	drawEndY := int(spriteHeight/2 + float64(viewportHeight)/HalfDivisor)
+	if drawStartY < 0 {
+		drawStartY = 0
+	}
+	if drawEndY >= viewportHeight {
+		drawEndY = viewportHeight - 1
+	}
+
+	drawStartX := int(-spriteWidth/2 + float64(spriteScreenX))
+	drawEndX := int(spriteWidth/2 + float64(spriteScreenX))
+
+	imageBounds := sprite.Img.Bounds()
+	imageWidth := imageBounds.Dx()
+	imageHeight := imageBounds.Dy()
+	if imageWidth <= 0 || imageHeight <= 0 {
+		return
+	}
+
+	// loop through every vertical stripe of the sprite on screen
+	for screenColumn := drawStartX; screenColumn < drawEndX; screenColumn++ {
+		if screenColumn < 0 || screenColumn >= viewportWidth {
+			continue
 		}
-
-		spriteScreenX := int((float64(viewportWidth) / 2) * (1 + transformX/transformY))
-
-		// calculate sprite dimensions on screen, keeping aspect ratio square
-		spriteHeight := math.Abs(float64(viewportHeight) / transformY)
-		spriteWidth := spriteHeight
-		if spriteHeight < 1 || spriteWidth < 1 {
+		// check z-buffer to see if sprite is visible (not hidden by wall)
+		if transformY >= zBuffer[screenColumn] {
 			continue
 		}
 
-		// calculate drawing bounds on screen
-		drawStartY := int(-spriteHeight/2 + float64(viewportHeight)/2)
-		drawEndY := int(spriteHeight/2 + float64(viewportHeight)/2)
-		if drawStartY < 0 {
-			drawStartY = 0
-		}
-		if drawEndY >= viewportHeight {
-			drawEndY = viewportHeight - 1
-		}
-
-		drawStartX := int(-spriteWidth/2 + float64(spriteScreenX))
-		drawEndX := int(spriteWidth/2 + float64(spriteScreenX))
-
-		imageBounds := sprite.Img.Bounds()
-		imageWidth := imageBounds.Dx()
-		imageHeight := imageBounds.Dy()
-		if imageWidth <= 0 || imageHeight <= 0 {
+		textureX := int(float64(screenColumn-drawStartX) * float64(imageWidth) / (spriteWidth))
+		if textureX < 0 || textureX >= imageWidth {
 			continue
 		}
 
-		// loop through every vertical stripe of the sprite on screen
-		for screenColumn := drawStartX; screenColumn < drawEndX; screenColumn++ {
-			if screenColumn < 0 || screenColumn >= viewportWidth {
-				continue
-			}
-			// check z-buffer to see if sprite is visible (not hidden by wall)
-			if transformY >= zBuffer[screenColumn] {
-				continue
-			}
-
-			textureX := int(float64(screenColumn-drawStartX) * float64(imageWidth) / (spriteWidth))
-			if textureX < 0 || textureX >= imageWidth {
-				continue
-			}
-
-			// draw the vertical slice of the sprite
-			subImage, ok := sprite.Img.SubImage(image.Rect(textureX, 0, textureX+1, imageHeight)).(*ebiten.Image)
-			if !ok {
-				continue
-			}
-
-			drawOptions := &ebiten.DrawImageOptions{}
-			scaleY := float64(drawEndY-drawStartY) / float64(imageHeight)
-			drawOptions.GeoM.Scale(1, scaleY)
-			drawOptions.GeoM.Translate(viewportX+float64(screenColumn), viewportY+float64(drawStartY))
-			screen.DrawImage(subImage, drawOptions)
+		// draw the vertical slice of the sprite
+		subImage, ok := sprite.Img.SubImage(image.Rect(textureX, 0, textureX+1, imageHeight)).(*ebiten.Image)
+		if !ok {
+			continue
 		}
+
+		drawOptions := &ebiten.DrawImageOptions{}
+		scaleY := float64(drawEndY-drawStartY) / float64(imageHeight)
+		drawOptions.GeoM.Scale(1, scaleY)
+		drawOptions.GeoM.Translate(viewportX+float64(screenColumn), viewportY+float64(drawStartY))
+		screen.DrawImage(subImage, drawOptions)
 	}
 }

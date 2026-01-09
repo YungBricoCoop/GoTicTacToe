@@ -16,7 +16,7 @@ func main() {
 	}
 
 	ebiten.SetWindowSize(WindowSizeX, WindowSizeY)
-	ebiten.SetWindowTitle("Tic-Tac-Toe")
+	ebiten.SetWindowTitle(WindowTitle)
 
 	if errG := ebiten.RunGame(game); errG != nil {
 		log.Fatal(errG)

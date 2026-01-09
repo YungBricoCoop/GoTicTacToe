@@ -9,7 +9,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type TextAlign int
@@ -27,20 +26,6 @@ const (
 )
 
 /* ---------- helpers ---------- */
-
-func fillRect(dst *ebiten.Image, x, y, w, h float32, col color.Color) {
-	c := color.RGBAModel.Convert(col)
-	rgba, ok := c.(color.RGBA)
-	if !ok {
-		rgba = color.RGBA{}
-	}
-	vector.FillRect(
-		dst,
-		x, y, w, h,
-		rgba,
-		false,
-	)
-}
 
 /* ---------- draw loop ---------- */
 
@@ -124,8 +109,6 @@ func (g *Game) drawGameOver(screen *ebiten.Image) {
 /* ---------- text ---------- */
 
 func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
-	const half = 2
-
 	op := &text.DrawOptions{}
 	op.LineSpacing = g.assets.NormalTextFace.Size + TextLineSpacing
 	op.ColorScale.ScaleWithColor(col)
@@ -135,7 +118,7 @@ func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align Te
 	switch align {
 	case TopLeft, CenterLeft, BottomLeft:
 	case TopCenter, Center, BottomCenter:
-		x -= w / half
+		x -= w / HalfDivisor
 	case TopRight, CenterRight, BottomRight:
 		x -= w
 	}
@@ -143,7 +126,7 @@ func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align Te
 	switch align {
 	case TopLeft, TopCenter, TopRight:
 	case CenterLeft, Center, CenterRight:
-		y -= h / half
+		y -= h / HalfDivisor
 	case BottomLeft, BottomCenter, BottomRight:
 		y -= h
 	}

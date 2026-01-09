@@ -9,6 +9,7 @@ const (
 	WindowSizeX     = 1280
 	WindowSizeY     = 720
 	WindowSizeYDiv2 = WindowSizeY / 2
+	WindowTitle     = "Raycastoe"
 	TPS             = 60
 	DeltaTime       = 1.0 / TPS
 
@@ -28,7 +29,6 @@ const (
 	NameInputY          = 40
 	NameInputLineHeight = 40
 
-	// MinimapGridCellSize is the minimap cell size in pixels.
 	MinimapGridCellSize      = 8
 	MinimapWidth             = MapGridSize * MinimapGridCellSize
 	MinimapHeight            = MapGridSize * MinimapGridCellSize
@@ -43,7 +43,9 @@ const (
 	MinimapPlayerArrowLength = 20
 	MinimapPlayerArrowWidth  = 2
 
-	PlayerFOV = 1.58
+	PlayerFOV           = 1.58
+	PlayerMovementSpeed = 5.0 // units per second
+	PlayerRotationSpeed = 3.0 // radians per second
 
 	DefaultPlayerXSpawnX = 11.5
 	DefaultPlayerXSpawnY = 11.5
@@ -55,6 +57,16 @@ const (
 	SpriteFolder  = "assets/sprites"
 
 	MaxRayIter = MapGridSize * MapGridSize
+
+	MapRoomStride = 7
+	MapRoomOffset = 3.5
+
+	InitialSpriteXPosX = 11.5
+	InitialSpriteXPosY = 7.0
+	InitialSpriteOPosX = 3.0
+	InitialSpriteOPosY = 4.0
+
+	HalfDivisor = 2.0
 )
 
 func defaultPlayerXSpawn() Vec2 {
