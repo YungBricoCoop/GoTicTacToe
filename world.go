@@ -86,21 +86,14 @@ func (w *World) rayCastAndDrawWalls(screen *ebiten.Image, g *Game, viewX, viewY 
 		// classic height = screenHeight / distance
 		lineH := float64(WindowSizeY) / hit.distance
 
-		drawStart := WindowSizeYDiv2 - lineH/HalfDivisor
-		drawEnd := WindowSizeYDiv2 + lineH/HalfDivisor
-
-		if drawStart < 0 {
-			drawStart = 0
-		}
-		if drawEnd > float64(WindowSizeY) {
-			drawEnd = float64(WindowSizeY)
-		}
-
-		//TODO: add shading
+		drawStart := float64(WindowSizeYDiv2) - lineH/HalfDivisor
 
 		// display the texture slice
 		op := &ebiten.DrawImageOptions{}
-		scaleY := (drawEnd - drawStart) / float64(texture.Bounds().Dy())
+		scaleY := lineH / float64(texture.Bounds().Dy())
+
+		//TODO: add shading
+
 		op.GeoM.Scale(1, scaleY)
 		op.GeoM.Translate(viewX+float64(x), viewY+drawStart)
 		screen.DrawImage(texture, op)
@@ -248,17 +241,10 @@ func drawSingleSprite(
 	}
 
 	// calculate drawing bounds on screen
-	drawStartY := int(-spriteHeight/2 + float64(viewportHeight)/HalfDivisor)
-	drawEndY := int(spriteHeight/2 + float64(viewportHeight)/HalfDivisor)
-	if drawStartY < 0 {
-		drawStartY = 0
-	}
-	if drawEndY >= viewportHeight {
-		drawEndY = viewportHeight - 1
-	}
+	spriteTopY := -spriteHeight/HalfDivisor + float64(viewportHeight)/HalfDivisor
 
-	drawStartX := int(-spriteWidth/2 + float64(spriteScreenX))
-	drawEndX := int(spriteWidth/2 + float64(spriteScreenX))
+	drawStartX := int(-spriteWidth/HalfDivisor + float64(spriteScreenX))
+	drawEndX := int(spriteWidth/HalfDivisor + float64(spriteScreenX))
 
 	imageBounds := sprite.Img.Bounds()
 	imageWidth := imageBounds.Dx()
@@ -289,9 +275,9 @@ func drawSingleSprite(
 		}
 
 		drawOptions := &ebiten.DrawImageOptions{}
-		scaleY := float64(drawEndY-drawStartY) / float64(imageHeight)
+		scaleY := spriteHeight / float64(imageHeight)
 		drawOptions.GeoM.Scale(1, scaleY)
-		drawOptions.GeoM.Translate(viewportX+float64(screenColumn), viewportY+float64(drawStartY))
+		drawOptions.GeoM.Translate(viewportX+float64(screenColumn), viewportY+spriteTopY)
 		screen.DrawImage(subImage, drawOptions)
 	}
 }

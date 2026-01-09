@@ -84,8 +84,8 @@ var (
 	ColorMinimapBorder = color.RGBA{0, 0, 0, 100}
 	ColorMinimapWall   = color.RGBA{200, 200, 200, 100}
 
-	ColorMinimapPlayerX = color.RGBA{80, 80, 255, 100}
-	ColorMinimapPlayerO = color.RGBA{80, 255, 80, 100}
+	ColorMinimapPlayerX = color.RGBA{249, 77, 0, 100}
+	ColorMinimapPlayerO = color.RGBA{86, 229, 252, 100}
 
 	ColorCeil  = color.RGBA{25, 25, 30, 255}
 	ColorFloor = color.RGBA{20, 18, 18, 255}
