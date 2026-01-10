@@ -26,11 +26,19 @@ const (
 	BottomRight
 )
 
+type GameState int
+
+const (
+	StateNameInput GameState = iota
+	StatePlaying
+	StateGameOver
+)
+
 type Game struct {
 	// state
 	state  GameState
 	board  Board
-	winner Winner
+	winner *Player
 
 	// players
 	playerX       *Player
@@ -69,7 +77,7 @@ func NewGame() (*Game, error) {
 
 	g := &Game{
 		state:          StateNameInput,
-		winner:         WinnerNone,
+		winner:         nil,
 		assets:         assets,
 		worldMap:       NewMap(),
 		playerX:        pX,
@@ -191,9 +199,10 @@ func (g *Game) updatePlaying() error {
 
 	g.board[cy][cx] = g.currentPlayer.symbol
 
-	winner := g.board.CheckWinner()
-	if winner != WinnerNone {
-		g.handleGameEnd(winner)
+	winnerSym := g.board.CheckWinner()
+	gameOver := winnerSym != PlayerSymbolNone || g.board.IsFull()
+	if gameOver {
+		g.handleGameEnd(winnerSym)
 		return nil
 	}
 
@@ -217,17 +226,18 @@ func (g *Game) switchPlayer() {
 	}
 }
 
-func (g *Game) handleGameEnd(w Winner) {
-	g.winner = w
+func (g *Game) handleGameEnd(w PlayerSymbol) {
 	g.state = StateGameOver
 
 	switch w {
-	case WinnerX:
+	case PlayerSymbolX:
+		g.winner = g.playerX
 		g.playerX.score++
-	case WinnerO:
+	case PlayerSymbolO:
+		g.winner = g.playerO
 		g.playerO.score++
-	case WinnerNone, WinnerDraw:
-		// no score update
+	case PlayerSymbolNone:
+		g.winner = nil
 	}
 }
 
@@ -291,13 +301,8 @@ func (g *Game) drawTurnInfo(screen *ebiten.Image) {
 
 func (g *Game) drawGameOver(screen *ebiten.Image) {
 	msg := "Draw!"
-	switch g.winner {
-	case WinnerNone, WinnerDraw:
-		msg = "Draw!"
-	case WinnerX:
-		msg = g.playerX.name + " wins!"
-	case WinnerO:
-		msg = g.playerO.name + " wins!"
+	if g.winner != nil {
+		msg = g.winner.name + " wins!"
 	}
 	msg += " Click to restart"
 	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
@@ -332,7 +337,7 @@ func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align Te
 
 func (g *Game) resetBoard() {
 	g.board.Reset()
-	g.winner = WinnerNone
+	g.winner = nil
 	g.state = StatePlaying
 	g.currentPlayer = g.playerX
 }

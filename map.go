@@ -65,10 +65,10 @@ func (m Map) IsWalkable(pos Vec2) bool {
 	return m.Tiles[y][x] == 0 //FIXME: define variable for each tile type
 }
 
-// GetTile returns the tile value at the given (x, y) coordinates.
-func (m Map) GetTile(x, y int) uint8 {
+// GetTile returns the tile value at the given (x, y) coordinates and whether the coordinates are out of bounds.
+func (m Map) GetTile(x, y int) (uint8, bool) {
 	if y < 0 || y >= m.Height() || x < 0 || x >= m.Width() {
-		return 1 // out of bounds is wall
+		return 0, true
 	}
-	return m.Tiles[y][x]
+	return m.Tiles[y][x], false
 }

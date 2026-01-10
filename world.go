@@ -66,7 +66,10 @@ func (w *World) rayCastAndDrawWalls(screen *ebiten.Image, g *Game, viewX, viewY 
 		w.zBuffer[x] = hit.distance
 
 		// get the texture id
-		textureID := g.worldMap.GetTile(hit.cellX, hit.cellY)
+		textureID, outOfBounds := g.worldMap.GetTile(hit.cellX, hit.cellY)
+		if outOfBounds {
+			continue
+		}
 		textureSlices := g.assets.Textures[textureID]
 		textureSliceIndex := int(hit.wallX * float64(TextureSize))
 
@@ -88,7 +91,10 @@ func (w *World) rayCastAndDrawWalls(screen *ebiten.Image, g *Game, viewX, viewY 
 		op := &ebiten.DrawImageOptions{}
 		scaleY := lineH / float64(texture.Bounds().Dy())
 
-		//TODO: add shading
+		// put shading based on the distance
+		//TODO: use constants
+		colorScale := float32(1.0) / (1.0 + float32(hit.distance)/10.0)
+		op.ColorScale.Scale(colorScale, colorScale, colorScale, 1)
 
 		op.GeoM.Scale(1, scaleY)
 		op.GeoM.Translate(viewX+float64(x), viewY+drawStart)
