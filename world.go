@@ -18,10 +18,6 @@ type World struct {
 	fovScale float64
 }
 
-func (w *World) Update(_ *Game) {
-	//  nothing dynamic to update
-}
-
 func (w *World) Draw(screen *ebiten.Image, g *Game) {
 	viewX := float64(0)
 	viewY := float64(0)
@@ -110,20 +106,17 @@ func (w *World) gatherPlayerSprites(g *Game) []Sprite {
 	var sprites []Sprite
 	p := g.currentPlayer
 	// 1. Other players
-	for _, obj := range g.gameObjects {
-		if otherPlayer, ok := obj.(*Player); ok {
-			if otherPlayer == p {
-				continue // Don't draw self (although first person usually doesn't show self anyway)
-			}
-			// Find the sprite for this player
-			if s, found := g.assets.Sprites[otherPlayer.symbol]; found {
-				if s.Img != nil {
-					sprites = append(sprites, Sprite{
-						Pos: otherPlayer.pos,
-						Img: s.Img,
-					})
-				}
-			}
+	otherPlayer := g.playerX
+	if p.symbol != PlayerSymbolX {
+		otherPlayer = g.playerO
+	}
+	// Find the sprite for this player
+	if s, found := g.assets.PlayerImg[otherPlayer.symbol]; found {
+		if s != nil {
+			sprites = append(sprites, Sprite{
+				Pos: otherPlayer.pos,
+				Img: s,
+			})
 		}
 	}
 	return sprites
@@ -136,15 +129,7 @@ func (w *World) gatherBoardSprites(g *Game) []Sprite {
 		for x := range GridSize {
 			sym := g.board[y][x]
 
-			var img *ebiten.Image
-			switch sym {
-			case PlayerSymbolX:
-				img = g.assets.XSymbolImg
-			case PlayerSymbolO:
-				img = g.assets.OSymbolImg
-			case PlayerSymbolNone:
-				continue
-			}
+			img := g.assets.SymbolImg[sym]
 
 			if img != nil {
 				// Calculate world position for the symbol

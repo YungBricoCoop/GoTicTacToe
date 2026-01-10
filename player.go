@@ -65,13 +65,6 @@ func (p *Player) Update(g *Game) {
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		p.rotate(-rotSpeed)
 	}
-
-	//FIXME: Maybe this need another logic
-	g.assets.Sprites[p.symbol] = Sprite{Img: g.assets.Sprites[p.symbol].Img, Pos: p.pos}
-}
-
-func (p *Player) Draw(_ *ebiten.Image, _ *Game) {
-	// nothing to draw for now, maybe we will draw an asset for each player
 }
 
 // Move the player by the given velocity vector, checking for collisions.

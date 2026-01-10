@@ -11,6 +11,8 @@ type Map struct {
 	Tiles [][]uint8
 }
 
+//FIXME: use numbers from 1-9 to define in which part of the grid we are so we dont need to calculate it each time
+
 // NewMap returns the default world map.
 func NewMap() Map {
 	return Map{
