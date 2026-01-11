@@ -5,12 +5,17 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 
-	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
+	"github.com/ebitenui/ebitenui"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
+
+//go:embed assets/fonts/*.ttf
+var fontsFS embed.FS
 
 type GameState int
 
@@ -35,6 +40,10 @@ type Assets struct {
 	NormalTextFace *text.GoTextFace
 	BigTextFace    *text.GoTextFace
 	Textures       map[uint8][]*ebiten.Image
+
+	// HUD images
+	PlayerHUDImage *ebiten.Image
+	WASDHUDImage   *ebiten.Image
 }
 
 type Game struct {
@@ -51,10 +60,12 @@ type Game struct {
 	// visuals
 	assets *Assets
 
+	// EbitenUI (HUD)
+	ui *ebitenui.UI
+
 	// raycasting world (minimap)
 	worldMap Map
-
-	minimap Minimap
+	minimap  Minimap
 
 	gameObjects []GameObject
 }
@@ -76,36 +87,74 @@ func NewGame() (*Game, error) {
 		currentPlayer:  pX,
 		editingPlayerX: true,
 		assets:         assets,
-
-		worldMap: NewMap(),
+		worldMap:       NewMap(),
 	}
 
 	g.gameObjects = append(g.gameObjects, &world, &g.minimap, pX, pO)
 
+	// UI init (ここで WASDHUDImage が nil だと widget.NewGraphic が panic する)
+	g.initUI()
+
 	return g, nil
 }
 
-func loadAssets() (*Assets, error) {
-	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+// loadEmbeddedImage loads an image from the embedded texturesFS (defined in texture.go).
+func loadEmbeddedImage(path string) (*ebiten.Image, error) {
+	f, err := texturesFS.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("load font: %w", err)
+		return nil, fmt.Errorf("open %q: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	img, _, err := ebitenutil.NewImageFromReader(f)
+	if err != nil {
+		return nil, fmt.Errorf("decode %q: %w", path, err)
+	}
+	return img, nil
+}
+
+func loadAssets() (*Assets, error) {
+	// ---- pixel font ----
+	fontBytes, err := fontsFS.ReadFile("assets/fonts/PressStart2P-Regular.ttf")
+	if err != nil {
+		return nil, fmt.Errorf("load pixel font: %w", err)
 	}
 
+	pixelFontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
+	if err != nil {
+		return nil, fmt.Errorf("create pixel font: %w", err)
+	}
+
+	// ---- textures (raycasting) ----
 	textures, err := LoadTextures()
 	if err != nil {
 		return nil, fmt.Errorf("load textures: %w", err)
 	}
 
+	// ---- HUD images (IMPORTANT) ----
+	// NOTE: these files MUST exist in assets/textures and are embedded by texture.go's texturesFS.
+	playerHUD, err := loadEmbeddedImage("assets/textures/1.png")
+	if err != nil {
+		return nil, fmt.Errorf("load PlayerHUDImage: %w", err)
+	}
+
+	wasdHUD, err := loadEmbeddedImage("assets/textures/wasd.png")
+	if err != nil {
+		return nil, fmt.Errorf("load WASDHUDImage: %w", err)
+	}
+
 	return &Assets{
 		NormalTextFace: &text.GoTextFace{
-			Source: fontSource,
-			Size:   DefaultFontSize,
+			Source: pixelFontSource,
+			Size:   14, // pixel perfect
 		},
 		BigTextFace: &text.GoTextFace{
-			Source: fontSource,
-			Size:   BigFontSize,
+			Source: pixelFontSource,
+			Size:   20,
 		},
-		Textures: textures,
+		Textures:       textures,
+		PlayerHUDImage: playerHUD,
+		WASDHUDImage:   wasdHUD,
 	}, nil
 }
 

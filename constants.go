@@ -51,6 +51,20 @@ const (
 
 	TextureSize   = 64
 	TextureFolder = "assets/textures"
+
+	// ===== HUD =====
+	HUDHeight = 140
+	HUDY      = WindowSizeY - HUDHeight
+
+	// 3 blocks (must sum to WindowSizeX)
+	HUDLeftW   = 320
+	HUDCenterW = 640
+	HUDInfoW   = 300 // info block width (ESC / Ctrl+R)
+
+	HUDRightW = 300
+
+	HUDTextPadX = 16
+	HUDTextPadY = 24
 )
 
 func defaultPlayerXSpawn() Vec2 {
@@ -73,4 +87,8 @@ var (
 
 	ColorCeil  = color.RGBA{25, 25, 30, 255}
 	ColorFloor = color.RGBA{20, 18, 18, 255}
+
+	// HUD frame style
+	ColorHUDBorder = color.RGBA{120, 120, 140, 255}
+	HUDBorderWidth = float32(2)
 )
