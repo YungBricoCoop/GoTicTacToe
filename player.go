@@ -65,11 +65,6 @@ func (p *Player) Update(g *Game) {
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		p.rotate(-rotSpeed)
 	}
-
-	// e for placing a mark
-	if ebiten.IsKeyPressed(ebiten.KeyE) {
-
-	}
 }
 
 // Move the player by the given velocity vector, checking for collisions.
