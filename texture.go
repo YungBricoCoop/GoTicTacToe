@@ -15,7 +15,6 @@ import (
 //go:embed assets/textures/*.png
 var texturesFS embed.FS
 
-// LoadTextures returns a mamp of texture ID to slices of vertical strips of the texture images.
 func LoadTextures() (map[uint8][]*ebiten.Image, error) {
 	entries, err := texturesFS.ReadDir(TextureFolder)
 	if err != nil {
@@ -36,7 +35,7 @@ func LoadTextures() (map[uint8][]*ebiten.Image, error) {
 
 		key, errP := parseNumericFilenameUint8(name)
 		if errP != nil {
-			return nil, errP
+			continue
 		}
 
 		fullPath := filepath.ToSlash(filepath.Join(TextureFolder, name))
@@ -62,7 +61,22 @@ func LoadTextures() (map[uint8][]*ebiten.Image, error) {
 	return out, nil
 }
 
-// parseNumericFilenameUint8 returns the uint8 value represented by the filename.
+func LoadHUDImage(name string) (*ebiten.Image, error) {
+	fullPath := filepath.ToSlash(filepath.Join(TextureFolder, name))
+	f, errO := texturesFS.Open(fullPath)
+	if errO != nil {
+		return nil, fmt.Errorf("open HUD image %q: %w", fullPath, errO)
+	}
+
+	img, _, errI := ebitenutil.NewImageFromReader(f)
+	_ = f.Close()
+	if errI != nil {
+		return nil, fmt.Errorf("decode HUD image %q: %w", fullPath, errI)
+	}
+	return img, nil
+}
+
+// parseNumericFilenameUint8 returns the uint8 value represented by the filename
 func parseNumericFilenameUint8(filename string) (uint8, error) {
 	base := strings.TrimSuffix(filename, filepath.Ext(filename))
 	n, err := strconv.Atoi(base)
@@ -75,7 +89,7 @@ func parseNumericFilenameUint8(filename string) (uint8, error) {
 	return uint8(n), nil
 }
 
-// sliceIntoVerticalStrips returns {TextureSize} images of width 1.
+// sliceIntoVerticalStrips returns {TextureSize} images of width 1
 func sliceIntoVerticalStrips(src *ebiten.Image) ([]*ebiten.Image, error) {
 	bounds := src.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
@@ -87,17 +101,12 @@ func sliceIntoVerticalStrips(src *ebiten.Image) ([]*ebiten.Image, error) {
 		return nil, fmt.Errorf("invalid texture height %d", height)
 	}
 
-	// create the output slice of size TextureSize
 	strips := make([]*ebiten.Image, TextureSize)
 
 	for x := range TextureSize {
-		// take a 1 pixel wide slice from the image
 		subImageStrip, _ := src.SubImage(image.Rect(x, 0, x+1, height)).(*ebiten.Image)
-
-		// create a new image and copy the slice into it
 		strip := ebiten.NewImage(1, height)
 		strip.DrawImage(subImageStrip, nil)
-
 		strips[x] = strip
 	}
 

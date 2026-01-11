@@ -24,18 +24,26 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) &&
 		(ebiten.IsKeyPressed(ebiten.KeyControlLeft) || ebiten.IsKeyPressed(ebiten.KeyControlRight)) {
 		g.fullReset()
+		g.uiUpdate()
 		return nil
 	}
 
 	switch g.state {
 	case StateNameInput:
-		return g.updateNameInput()
+		err := g.updateNameInput()
+		g.uiUpdate()
+		return err
 	case StatePlaying:
-		return g.updatePlaying()
+		err := g.updatePlaying()
+		g.uiUpdate()
+		return err
 	case StateGameOver:
-		return g.updateGameOver()
+		err := g.updateGameOver()
+		g.uiUpdate()
+		return err
 	}
 
+	g.uiUpdate()
 	return nil
 }
 
