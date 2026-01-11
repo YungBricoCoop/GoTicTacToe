@@ -45,6 +45,9 @@ type Game struct {
 	playerO       *Player
 	currentPlayer *Player
 
+	// sprites
+	sprites []*Sprite
+
 	// input state
 	inputBuffer    string
 	editingPlayerX bool
@@ -75,6 +78,88 @@ func NewGame() (*Game, error) {
 	minimap := &Minimap{}
 	world := &World{fovScale: GetK(PlayerFOV)}
 
+	sprites := []*Sprite{
+		// Lights (4) – placed to softly guide traversal
+		{
+			Position:  Vec2{X: 2.2, Y: 4.7},
+			TextureID: Light,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 11.5, Y: 1.4},
+			TextureID: Light,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 8.4, Y: 14.6},
+			TextureID: Light,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 18.2, Y: 18.6},
+			TextureID: Light,
+			Hidden:    false,
+		},
+
+		{
+			Position:  Vec2{X: 2.9, Y: 5.3},
+			TextureID: SkeletonSkull,
+			Scale:     0.5,
+			Z:         -1.0,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 10.6, Y: 5.1},
+			TextureID: SkeletonSkull,
+			Scale:     0.55,
+			Z:         -1.0,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 15.9, Y: 4.4},
+			TextureID: SkeletonSkull,
+			Scale:     0.45,
+			Z:         -1.0,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 5.2, Y: 11.7},
+			TextureID: SkeletonSkull,
+			Scale:     0.6,
+			Z:         -1.0,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 12.7, Y: 12.4},
+			TextureID: SkeletonSkull,
+			Scale:     0.5,
+			Z:         -1.0,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 17.1, Y: 17.3},
+			TextureID: SkeletonSkull,
+			Scale:     0.55,
+			Z:         -1.0,
+			Hidden:    false,
+		},
+
+		{
+			Position:  Vec2{X: 6.4, Y: 3.2},
+			TextureID: Chains,
+			Scale:     0.45,
+			Z:         0.5,
+			Hidden:    false,
+		},
+		{
+			Position:  Vec2{X: 14.8, Y: 10.6},
+			TextureID: Chains,
+			Scale:     0.5,
+			Z:         0.5,
+			Hidden:    false,
+		},
+	}
+
 	g := &Game{
 		state:          StateNameInput,
 		winner:         nil,
@@ -87,6 +172,7 @@ func NewGame() (*Game, error) {
 		inputBuffer:    "",
 		updatables:     nil,
 		drawables:      nil,
+		sprites:        sprites,
 	}
 
 	g.updatables = append(g.updatables,
@@ -183,6 +269,7 @@ func (g *Game) updatePlaying() error {
 		return nil
 	}
 
+	// compute the board cell from the current player world position
 	pos := g.currentPlayer.pos
 	cx := int(pos.X / MapRoomStride)
 	cy := int(pos.Y / MapRoomStride)
@@ -197,7 +284,35 @@ func (g *Game) updatePlaying() error {
 		return nil
 	}
 
+	// update the board (this is the authoritative game state)
 	g.board[cy][cx] = g.currentPlayer.symbol
+
+	// spawn a visual mark sprite at the center of the cell
+	// this avoids jitter when the player is not perfectly centered in the room
+	cellCenter := Vec2{
+		X: (float64(cx) + 0.5) * MapRoomStride,
+		Y: (float64(cy) + 0.5) * MapRoomStride,
+	}
+
+	// choose the correct sprite texture for the mark
+	var markTexture TextureId
+	switch g.currentPlayer.symbol {
+	case PlayerSymbolX:
+		markTexture = PlayerXSymbol
+	case PlayerSymbolO:
+		markTexture = PlayerOSymbol
+	default:
+		// should never happen, but keep it safe
+		return nil
+	}
+
+	g.sprites = append(g.sprites, &Sprite{
+		Position:  cellCenter,
+		TextureID: markTexture,
+		Scale:     1.0,
+		Z:         0.0,
+		Hidden:    false,
+	})
 
 	winnerSym := g.board.CheckWinner()
 	gameOver := winnerSym != PlayerSymbolNone || g.board.IsFull()

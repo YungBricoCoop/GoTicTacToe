@@ -3,20 +3,22 @@
 
 package main
 
-// Map represents the world grid using tiles.
-// Tile values: 0 = empty, >=1 wall types.
-// The value of each tile represents the texture for that tile.
-// We have 256 different tile types (0-255).
-type Map struct {
-	Tiles [][]uint8
-}
+// TileID represents the type of a tile in the world map.
+type TileID uint8
 
-//FIXME: use numbers from 1-9 to define in which part of the grid we are so we dont need to calculate it each time
+const (
+	TileEmpty TileID = 0
+)
+
+// Map represents the game world as a grid of tiles.
+type Map struct {
+	Tiles [][]TileID
+}
 
 // NewMap returns the default world map.
 func NewMap() Map {
 	return Map{
-		Tiles: [][]uint8{
+		Tiles: [][]TileID{
 			{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1},
 			{1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1},
 			{1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2},
@@ -43,6 +45,15 @@ func NewMap() Map {
 	}
 }
 
+// Texture returns the texture ID for the tile type.
+// Returns ok=false for empty tiles.
+func (t TileID) TextureID() (TextureId, bool) {
+	if t == TileEmpty {
+		return 0, false
+	}
+	return TextureId(t), true
+}
+
 // Width returns the width of the map in tiles.
 func (m Map) Width() int {
 	if len(m.Tiles) == 0 {
@@ -62,13 +73,13 @@ func (m Map) IsWalkable(pos Vec2) bool {
 	if x < 0 || x >= m.Width() || y < 0 || y >= m.Height() {
 		return false
 	}
-	return m.Tiles[y][x] == 0 //FIXME: define variable for each tile type
+	return m.Tiles[y][x] == TileEmpty
 }
 
-// GetTile returns the tile value at the given (x, y) coordinates and whether the coordinates are out of bounds.
-func (m Map) GetTile(x, y int) (uint8, bool) {
+// GetTileId returns the tile value at the given (x, y) coordinates and whether the coordinates are out of bounds.
+func (m Map) GetTileId(x, y int) (TileID, bool) {
 	if y < 0 || y >= m.Height() || x < 0 || x >= m.Width() {
-		return 0, true
+		return TileEmpty, true
 	}
 	return m.Tiles[y][x], false
 }

@@ -7,6 +7,7 @@ import "image/color"
 
 const (
 	WindowSizeX     = 1280
+	WindowSizeXDiv2 = WindowSizeX / 2
 	WindowSizeY     = 720
 	WindowSizeYDiv2 = WindowSizeY / 2
 	WindowTitle     = "Raycastoe"
@@ -59,7 +60,6 @@ const (
 	MaxRayIter = MapGridSize * MapGridSize
 
 	MapRoomStride = 7
-	MapRoomOffset = 3.5
 
 	InitialSpriteXPosX = 11.5
 	InitialSpriteXPosY = 7.0
@@ -87,6 +87,23 @@ var (
 	ColorMinimapPlayerX = color.RGBA{249, 77, 0, 100}
 	ColorMinimapPlayerO = color.RGBA{86, 229, 252, 100}
 
-	ColorCeil  = color.RGBA{25, 25, 30, 255}
-	ColorFloor = color.RGBA{20, 18, 18, 255}
+	ColorCeiling = color.RGBA{22, 24, 28, 255}
+	ColorFloor   = color.RGBA{17, 15, 15, 255}
 )
+
+//nolint:gochecknoglobals // texture manifest
+var imageManifest = map[TextureId]string{
+	// walls
+	WallBrick:       "wall-brick.png",
+	WallBrickHole:   "wall-brick-hole.png",
+	WallBrickGopher: "wall-brick-gopher.png",
+
+	// sprites
+	PlayerXSymbol:    "x.png",
+	PlayerXCharacter: "x-player.png",
+	PlayerOSymbol:    "o.png",
+	PlayerOCharacter: "o-player.png",
+	SkeletonSkull:    "skeleton-skull.png",
+	Chains:           "chains.png",
+	Light:            "lantern.png",
+}
