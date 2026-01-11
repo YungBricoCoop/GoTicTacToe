@@ -1,6 +1,9 @@
 # Go Tic Tac Toe Raycast
 
-## Goal 
+WakaTime Elwan : [![wakatime](https://wakatime.com/badge/user/ee872f10-6167-41c6-8aad-e80d7519df4c/project/3ca59ddd-d380-4a20-8fa3-de6ee94b5c18.svg)](https://wakatime.com/badge/user/ee872f10-6167-41c6-8aad-e80d7519df4c/project/3ca59ddd-d380-4a20-8fa3-de6ee94b5c18)
+
+## Goal
+
 Our goal is to build a 3D Tic-Tac-Toe game using raycasting.
 Raycasting works by rendering vertical rectangles on the screen, where each rectangle's height represents the distance to an object in the scene, creating a 3D illusion.
 
@@ -9,7 +12,6 @@ https://lodev.org/cgtutor/raycasting.html
 
 Project website:
 https://yungbricocoop.github.io/GoTicTacToe/
-
 
 ## Changelog
 
