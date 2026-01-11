@@ -7,6 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// PlayerSymbol represents the symbol used by a player in the game, either X or O.
 type PlayerSymbol int
 
 const (
@@ -15,26 +16,25 @@ const (
 	PlayerSymbolO
 )
 
-const (
-	MovementSpeed = 5.0  // units per second
-	RotationSpeed = 3.0  // radians per second
-	FOV           = 60.0 // degrees
-)
-
+// Player represents a player in the game.
+// pos is the player's position in the world.
+// dir is the player's direction vector.
+// symbol is the player's symbol (X or O).
+// name is the player's name.
+// score is the player's score.
 type Player struct {
 	pos    Vec2
 	dir    Vec2
-	plane  Vec2
 	symbol PlayerSymbol
 	name   string
 	score  int
 }
 
+// NewPlayer creates a new player with the given position, symbol, and name.
 func NewPlayer(x, y float64, symbol PlayerSymbol, name string) *Player {
 	return &Player{
 		pos:    Vec2{x, y},
 		dir:    Vec2{-1, 0},
-		plane:  Vec2{0, 0.66},
 		symbol: symbol,
 		name:   name,
 		score:  0,
@@ -42,16 +42,15 @@ func NewPlayer(x, y float64, symbol PlayerSymbol, name string) *Player {
 }
 
 func (p *Player) Update(g *Game) {
+	// only update if this is the current player
 	if g.currentPlayer != p {
 		return
 	}
 
+	moveSpeed := PlayerMovementSpeed * DeltaTime
+	rotSpeed := PlayerRotationSpeed * DeltaTime
+
 	// w/s for forward/backward
-	dt := DeltaTime
-
-	moveSpeed := MovementSpeed * dt
-	rotSpeed := RotationSpeed * dt
-
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
 		p.move(g, p.dir.Scale(moveSpeed))
 	}
@@ -68,33 +67,22 @@ func (p *Player) Update(g *Game) {
 	}
 }
 
-func (p *Player) Draw(_ *ebiten.Image, _ *Game) {
-	// nothing to draw for now, maybe we will draw an asset for each player
-}
-
+// Move the player by the given velocity vector, checking for collisions.
 func (p *Player) move(g *Game, velocity Vec2) {
 	// try to move in X
 	nextPos := p.pos.Add(Vec2{X: velocity.X, Y: 0})
-	if isValidPosition(g.worldMap, nextPos) {
+	if g.worldMap.IsWalkable(nextPos) {
 		p.pos = nextPos
 	}
 
 	// try to move in Y
 	nextPos = p.pos.Add(Vec2{X: 0, Y: velocity.Y})
-	if isValidPosition(g.worldMap, nextPos) {
+	if g.worldMap.IsWalkable(nextPos) {
 		p.pos = nextPos
 	}
 }
 
+// Rotate the player by the given angle in radians.
 func (p *Player) rotate(angle float64) {
 	p.dir = p.dir.Rotate(angle)
-	p.plane = p.plane.Rotate(angle)
-}
-
-func isValidPosition(m Map, pos Vec2) bool {
-	x, y := int(pos.X), int(pos.Y)
-	if x < 0 || x >= m.Width() || y < 0 || y >= m.Height() {
-		return false
-	}
-	return m.Tiles[y][x] == 0
 }

@@ -6,10 +6,13 @@ package main
 import "image/color"
 
 const (
-	WindowSizeX = 1280
-	WindowSizeY = 720
-	TPS         = 60
-	DeltaTime   = 1.0 / TPS
+	WindowSizeX     = 1280
+	WindowSizeXDiv2 = WindowSizeX / 2
+	WindowSizeY     = 720
+	WindowSizeYDiv2 = WindowSizeY / 2
+	WindowTitle     = "Raycastoe"
+	TPS             = 60
+	DeltaTime       = 1.0 / TPS
 
 	GridSize        = 3
 	MapGridSize     = 22
@@ -27,7 +30,6 @@ const (
 	NameInputY          = 40
 	NameInputLineHeight = 40
 
-	// MinimapGridCellSize is the minimap cell size in pixels.
 	MinimapGridCellSize      = 8
 	MinimapWidth             = MapGridSize * MinimapGridCellSize
 	MinimapHeight            = MapGridSize * MinimapGridCellSize
@@ -42,7 +44,9 @@ const (
 	MinimapPlayerArrowLength = 20
 	MinimapPlayerArrowWidth  = 2
 
-	PlayerFOV = 1.58
+	PlayerFOV           = 1.58
+	PlayerMovementSpeed = 5.0 // units per second
+	PlayerRotationSpeed = 3.0 // radians per second
 
 	DefaultPlayerXSpawnX = 11.5
 	DefaultPlayerXSpawnY = 11.5
@@ -77,13 +81,13 @@ func defaultPlayerOSpawn() Vec2 {
 
 //nolint:gochecknoglobals // colors
 var (
-	ColorBackground = color.RGBA{30, 30, 30, 255}
+	ColorBackground = color.RGBA{30, 30, 30, 100}
 
-	ColorMinimapBorder = color.RGBA{0, 0, 0, 255}
-	ColorMinimapWall   = color.RGBA{200, 200, 200, 230}
+	ColorMinimapBorder = color.RGBA{0, 0, 0, 100}
+	ColorMinimapWall   = color.RGBA{200, 200, 200, 100}
 
-	ColorMinimapPlayerX = color.RGBA{80, 80, 255, 255}
-	ColorMinimapPlayerO = color.RGBA{80, 255, 80, 255}
+	ColorMinimapPlayerX = color.RGBA{249, 77, 0, 100}
+	ColorMinimapPlayerO = color.RGBA{86, 229, 252, 100}
 
 	ColorCeil  = color.RGBA{25, 25, 30, 255}
 	ColorFloor = color.RGBA{20, 18, 18, 255}
@@ -92,3 +96,20 @@ var (
 	ColorHUDBorder = color.RGBA{120, 120, 140, 255}
 	HUDBorderWidth = float32(2)
 )
+
+//nolint:gochecknoglobals // texture manifest
+var imageManifest = map[TextureId]string{
+	// walls
+	WallBrick:       "wall-brick.png",
+	WallBrickHole:   "wall-brick-hole.png",
+	WallBrickGopher: "wall-brick-gopher.png",
+
+	// sprites
+	PlayerXSymbol:    "x.png",
+	PlayerXCharacter: "x-player.png",
+	PlayerOSymbol:    "o.png",
+	PlayerOCharacter: "o-player.png",
+	SkeletonSkull:    "skeleton-skull.png",
+	Chains:           "chains.png",
+	Light:            "lantern.png",
+}

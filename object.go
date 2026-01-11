@@ -3,11 +3,12 @@
 
 package main
 
-import (
-	"github.com/hajimehoshi/ebiten/v2"
-)
+import "github.com/hajimehoshi/ebiten/v2"
 
-type GameObject interface {
+type Updatable interface {
 	Update(g *Game)
+}
+
+type Drawable interface {
 	Draw(screen *ebiten.Image, g *Game)
 }

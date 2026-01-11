@@ -44,7 +44,7 @@ func GetRayDirection(playerDirection Vec2, k float64, cameraX float64) Vec2 {
 func CastRay(
 	playerPosition Vec2,
 	rayDirection Vec2,
-	grid [][]uint8,
+	grid Grid,
 	maxIterations int,
 ) RayHit {
 	// return no hit if the grid is empty
@@ -52,8 +52,8 @@ func CastRay(
 		return noHit()
 	}
 
-	gridWidth := len(grid[0])
-	gridHeight := len(grid)
+	gridWidth := grid.Width()
+	gridHeight := grid.Height()
 
 	// grid cell the player is currently standing on
 	mapX := int(playerPosition.X)
@@ -176,12 +176,16 @@ func isRayOutOfBounds(mapX, mapY int, gridWidth, gridHeight int) bool {
 }
 
 // isGridEmpty returns true if the grid is empty, if it has zero width or height.
-func isGridEmpty(grid [][]uint8) bool {
-	return len(grid) == 0 || len(grid[0]) == 0
+func isGridEmpty(grid Grid) bool {
+	return grid.Width() == 0 || grid.Height() == 0
 }
 
 // isGridCellNotEmpty returns true if the grid cell at (x, y) is not empty.
-// The cell is considered not empty if its value is greater than zero.
-func isGridCellNotEmpty(grid [][]uint8, x, y int) bool {
-	return grid[y][x] > 0
+// The cell is considered not empty if its value is different from TileEmpty.
+func isGridCellNotEmpty(grid Grid, x, y int) bool {
+	tileID, outOfBounds := grid.GetTileId(x, y)
+	if outOfBounds {
+		return false
+	}
+	return tileID != TileEmpty
 }

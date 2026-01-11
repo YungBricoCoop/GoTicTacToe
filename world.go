@@ -1,7 +1,3 @@
-// déclaraer une fois k
-// cameraX est endehors de la boucle for
-// les couleurs dans le fichier constant
-
 // Copyright (c) 2025 Elwan Mayencourt, Masami Morimura
 // SPDX-License-Identifier: Apache-2.0
 
@@ -9,82 +5,399 @@ package main
 
 import (
 	"math"
+	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-type World struct{}
-
-func (w *World) Update(_ *Game) {
-	//  nothing dynamic to update
+type World struct {
+	zBuffer  []float64
+	cameraX  []float64
+	fovScale float64
 }
 
-// drawRaycastView renders a classic raycaster view (vertical wall slices)
-// into a square area on the left side of the screen.
-
+// Draw renders the world view.
+// it draws ceiling and floor, then raycasts each screen column to draw textured walls,
+// then draws sprites using the z-buffer for correct occlusion.
 func (w *World) Draw(screen *ebiten.Image, g *Game) {
-	// Render area = left square (720x720) to match WindowSizeY
-	viewX := float64(0)
-	viewY := float64(0)
-	viewW := WindowSizeX
-	viewH := WindowSizeY
+	if screen == nil || g == nil || g.assets == nil {
+		return
+	}
 
-	fillRect(screen, float32(viewX), float32(viewY), float32(viewW), float32(viewH/2), ColorCeil)
-	fillRect(screen, float32(viewX), float32(viewY)+float32(viewH/2), float32(viewW), float32(viewH/2), ColorFloor)
+	drawCeiling(screen)
+	drawFloor(screen)
 
 	p := g.currentPlayer
 	if p == nil {
 		return
 	}
 
-	k := GetK(PlayerFOV) // PlayerFOV is radians
-	maxIter := MapGridSize * MapGridSize
+	// initialize buffers once
+	w.ensureRenderBuffers()
 
-	for x := 0; x < viewW; x++ {
-		cameraX := GetCameraX(x, viewW)
-		rayDir := GetRayDirection(p.dir, k, cameraX)
+	// walls write to w.zBuffer
+	w.raycastColumnsAndDrawWalls(screen, g, p)
 
-		hit := CastRay(p.pos, rayDir, g.worldMap.Tiles, maxIter)
-		if !hit.hit || math.IsInf(hit.distance, 1) || hit.distance <= 0 {
+	// sprites read w.zBuffer to hide behind walls
+	w.drawSprites(screen, g, p)
+}
+
+// ensureRenderBuffers allocates and fills per frame constant buffers.
+// zBuffer stores the distance per screen column.
+// cameraX stores camera x coordinates per screen column (between -1 and 1).
+func (w *World) ensureRenderBuffers() {
+	if w.zBuffer == nil || len(w.zBuffer) != WindowSizeX {
+		w.zBuffer = make([]float64, WindowSizeX)
+	}
+
+	if w.cameraX == nil || len(w.cameraX) != WindowSizeX {
+		w.cameraX = make([]float64, WindowSizeX)
+		for i := 0; i < WindowSizeX; i++ {
+			w.cameraX[i] = GetCameraX(i, WindowSizeX)
+		}
+	}
+}
+
+// raycastColumnsAndDrawWalls casts one ray per screen column and draws the corresponding wall slice.
+// this is the main raycasting render loop.
+func (w *World) raycastColumnsAndDrawWalls(screen *ebiten.Image, g *Game, p *Player) {
+	if screen == nil || g == nil || p == nil {
+		return
+	}
+
+	for x := 0; x < WindowSizeX; x++ {
+		hit, ok := w.castRayForScreenColumn(g, p, x)
+		if !ok {
+			w.zBuffer[x] = math.Inf(1)
 			continue
 		}
 
-		// get the texture id
-		textureID := g.worldMap.Tiles[hit.cellY][hit.cellX]
-		textureSlices := g.assets.Textures[textureID]
-		textureSliceIndex := int(hit.wallX * float64(TextureSize))
-		// clamp textureSliceIndex to valid range
-		if textureSliceIndex < 0 {
-			textureSliceIndex = 0
-		} else if textureSliceIndex >= len(textureSlices) {
-			textureSliceIndex = len(textureSlices) - 1
+		w.zBuffer[x] = hit.distance
+
+		strip, ok := w.resolveTextureStripFromHit(g, hit)
+		if !ok {
+			continue
 		}
 
-		texture := textureSlices[textureSliceIndex]
+		lineH := w.wallSliceHeightOnScreen(hit.distance)
+		drawStart := w.wallSliceTopY(lineH)
 
-		// Classic height = screenHeight / distance
-		lineH := float64(viewH) / hit.distance
-
-		drawStart := float64(viewH)/2 - lineH/2
-		drawEnd := float64(viewH)/2 + lineH/2
-
-		if drawStart < 0 {
-			drawStart = 0
-		}
-		if drawEnd > float64(viewH) {
-			drawEnd = float64(viewH)
-		}
-
-		// basic shading
-
-		op := &ebiten.DrawImageOptions{}
-
-		// Scale first, then translate. Calling Translate before Scale causes
-		// the translation to be scaled as well, which misplaces the slice.
-		scaleY := (drawEnd - drawStart) / float64(texture.Bounds().Dy())
-		op.GeoM.Scale(1, scaleY)
-		op.GeoM.Translate(viewX+float64(x), viewY+drawStart)
-
-		screen.DrawImage(texture, op)
+		w.drawTexturedWallSlice(screen, strip, x, drawStart, lineH, hit.distance)
 	}
+}
+
+// castRayForScreenColumn builds the ray direction for the given screen column and runs the dda cast.
+// it returns ok=false if there is no valid hit.
+func (w *World) castRayForScreenColumn(g *Game, p *Player, x int) (RayHit, bool) {
+	if g == nil || p == nil {
+		return RayHit{}, false
+	}
+	if x < 0 || x >= WindowSizeX {
+		return RayHit{}, false
+	}
+
+	rayDir := GetRayDirection(p.dir, w.fovScale, w.cameraX[x])
+
+	hit := CastRay(p.pos, rayDir, g.worldMap, MaxRayIter)
+	if !hit.hit || math.IsInf(hit.distance, 1) || hit.distance <= 0 {
+		return RayHit{}, false
+	}
+
+	return hit, true
+}
+
+// resolveTextureStripFromHit converts the map hit into a texture strip image.
+// it uses the hit cell to read the tile id, maps it to a texture id, then uses wallX to pick the strip.
+func (w *World) resolveTextureStripFromHit(g *Game, hit RayHit) (*ebiten.Image, bool) {
+	if g == nil || g.assets == nil {
+		return nil, false
+	}
+
+	// get the texture id
+	tileId, outOfBounds := g.worldMap.GetTileId(hit.cellX, hit.cellY)
+	if outOfBounds {
+		return nil, false
+	}
+
+	textureID, ok := tileId.TextureID()
+	if !ok {
+		return nil, false
+	}
+
+	texture := g.assets.Textures[textureID]
+	if len(texture.Strips) == 0 {
+		return nil, false
+	}
+
+	stripIndex := w.textureStripIndexFromWallX(hit.wallX, len(texture.Strips))
+	return texture.Strips[stripIndex], true
+}
+
+// textureStripIndexFromWallX converts wallX (0..1) into a strip index for the texture.
+// it clamps the index to avoid out of range due to floating point rounding.
+func (w *World) textureStripIndexFromWallX(wallX float64, stripCount int) int {
+	if stripCount <= 1 {
+		return 0
+	}
+
+	// stripIndex is the x coordinate inside the texture (converted to a strip index)
+	stripIndex := int(wallX * float64(stripCount))
+
+	// clamp stripIndex to valid range
+	return clampInt(stripIndex, 0, stripCount-1)
+}
+
+// wallSliceHeightOnScreen returns the wall slice height in pixels for a given hit distance.
+// it uses the classic projection formula: screenHeight / distance.
+func (w *World) wallSliceHeightOnScreen(distance float64) float64 {
+	if distance <= 0 || math.IsInf(distance, 1) || math.IsNaN(distance) {
+		return 0
+	}
+
+	// classic height = screenHeight / distance
+	return float64(WindowSizeY) / distance
+}
+
+// wallSliceTopY returns the y coordinate where the wall slice should start so it is vertically centered.
+func (w *World) wallSliceTopY(lineH float64) float64 {
+	return float64(WindowSizeYDiv2) - lineH/HalfDivisor
+}
+
+// drawTexturedWallSlice draws one vertical textured strip on screen.
+// it scales the strip to the projected wall height, applies distance shading, and draws it at column x.
+func (w *World) drawTexturedWallSlice(
+	screen *ebiten.Image,
+	textureStrip *ebiten.Image,
+	x int,
+	drawStart float64,
+	lineH float64,
+	distance float64,
+) {
+	if screen == nil || textureStrip == nil {
+		return
+	}
+	if x < 0 || x >= WindowSizeX {
+		return
+	}
+	if lineH <= 0 {
+		return
+	}
+
+	op := &ebiten.DrawImageOptions{}
+
+	// scale the strip to match the wall height on screen
+	scaleY := lineH / float64(TextureSize)
+	op.GeoM.Scale(1, scaleY)
+
+	// put shading based on the distance
+	colorScale := w.distanceShadeScale(distance)
+	op.ColorScale.Scale(colorScale, colorScale, colorScale, 1)
+
+	op.GeoM.Translate(float64(x), drawStart)
+	screen.DrawImage(textureStrip, op)
+}
+
+// distanceShadeScale returns a grayscale multiplier for distance shading.
+// farther walls get darker.
+func (w *World) distanceShadeScale(distance float64) float32 {
+	if distance <= 0 || math.IsInf(distance, 1) || math.IsNaN(distance) {
+		return 1
+	}
+
+	return float32(1.0) / (1.0 + float32(distance)/20.0)
+}
+
+// drawSprites renders all world sprites.
+// it uses the z-buffer to clip sprites behind walls and sorts sprites back-to-front.
+func (w *World) drawSprites(screen *ebiten.Image, g *Game, p *Player) {
+	if screen == nil || g == nil || p == nil || g.assets == nil {
+		return
+	}
+	if len(g.sprites) == 0 {
+		return
+	}
+	if w.zBuffer == nil || len(w.zBuffer) != WindowSizeX {
+		return
+	}
+
+	// build camera plane used by ray direction: rayDir = dir + plane * cameraX
+	plane := Vec2{
+		X: -p.dir.Y * w.fovScale,
+		Y: p.dir.X * w.fovScale,
+	}
+
+	// collect visible sprites with distance for sorting
+	type spriteDrawItem struct {
+		sprite  *Sprite
+		distSqr float64
+	}
+	items := make([]spriteDrawItem, 0, len(g.sprites))
+
+	for _, s := range g.sprites {
+		if s == nil || s.Hidden {
+			continue
+		}
+
+		dx := s.Position.X - p.pos.X
+		dy := s.Position.Y - p.pos.Y
+		items = append(items, spriteDrawItem{
+			sprite:  s,
+			distSqr: dx*dx + dy*dy,
+		})
+	}
+
+	if len(items) == 0 {
+		return
+	}
+
+	// draw far to near so the closest sprite is drawn last and overrides the ones behind it
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].distSqr > items[j].distSqr
+	})
+
+	for _, it := range items {
+		w.drawSingleSprite(screen, g, p, plane, it.sprite)
+	}
+}
+
+// drawSingleSprite projects one sprite into the screen and draws it column by column.
+func (w *World) drawSingleSprite(screen *ebiten.Image, g *Game, p *Player, plane Vec2, s *Sprite) {
+	if screen == nil || g == nil || p == nil || s == nil || g.assets == nil {
+		return
+	}
+
+	texture := g.assets.Textures[s.TextureID]
+	if len(texture.Strips) == 0 {
+		return
+	}
+
+	// sprite position relative to player
+	spriteX := s.Position.X - p.pos.X
+	spriteY := s.Position.Y - p.pos.Y
+
+	// inverse determinant for camera transform
+	det := plane.X*p.dir.Y - p.dir.X*plane.Y
+	if det == 0 {
+		return
+	}
+	invDet := 1.0 / det
+
+	// transform sprite into camera space
+	transformX := invDet * (p.dir.Y*spriteX - p.dir.X*spriteY)
+	transformY := invDet * (-plane.Y*spriteX + plane.X*spriteY)
+
+	// transformY is depth (in front of camera must be > 0)
+	if transformY <= 0 || math.IsInf(transformY, 1) || math.IsNaN(transformY) {
+		return
+	}
+
+	// sprite scale guard
+	scale := s.Scale
+	if scale <= 0 {
+		scale = 1.0
+	}
+
+	// screen x of the sprite center
+	spriteScreenX := int(float64(WindowSizeXDiv2) * (1.0 + transformX/transformY))
+
+	// projected sprite size (classic)
+	spriteHeight := int((float64(WindowSizeY) / transformY) * scale)
+	if spriteHeight <= 0 {
+		return
+	}
+	spriteWidth := spriteHeight
+
+	// vertical placement
+	// z shifts the sprite up in world units, scaled by depth into pixels
+	zOffsetPx := int((s.Z / transformY) * float64(WindowSizeYDiv2))
+	drawStartY := -spriteHeight/2 + WindowSizeYDiv2 - zOffsetPx
+
+	// horizontal placement
+	drawStartX := -spriteWidth/2 + spriteScreenX
+	drawEndX := spriteWidth/2 + spriteScreenX
+
+	// clip to screen bounds
+	if drawStartX < 0 {
+		drawStartX = 0
+	}
+	if drawEndX >= WindowSizeX {
+		drawEndX = WindowSizeX - 1
+	}
+
+	// precompute shading from depth
+	shade := w.distanceShadeScale(transformY)
+
+	stripCount := len(texture.Strips)
+	if stripCount <= 0 {
+		return
+	}
+
+	// draw one screen column at a time, selecting the matching texture strip
+	for x := drawStartX; x <= drawEndX; x++ {
+		// z-buffer test: if wall is closer, skip this sprite column
+		if transformY >= w.zBuffer[x] {
+			continue
+		}
+
+		// map current screen x into [0..1] inside sprite
+		u := (float64(x - (spriteScreenX - spriteWidth/2))) / float64(spriteWidth)
+		if u < 0 || u > 1 {
+			continue
+		}
+
+		stripIndex := int(u * float64(stripCount))
+		stripIndex = clampInt(stripIndex, 0, stripCount-1)
+
+		strip := texture.Strips[stripIndex]
+		if strip == nil {
+			continue
+		}
+
+		// scale strip vertically to match projected sprite height
+		op := &ebiten.DrawImageOptions{}
+		scaleY := float64(spriteHeight) / float64(TextureSize)
+		op.GeoM.Scale(1, scaleY)
+
+		// apply distance shading
+		op.ColorScale.Scale(shade, shade, shade, 1)
+
+		op.GeoM.Translate(float64(x), float64(drawStartY))
+		screen.DrawImage(strip, op)
+	}
+}
+
+// clampInt clamps an int value in the inclusive range [lo, hi].
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// drawCeiling draws the ceiling color rectangle.
+func drawCeiling(screen *ebiten.Image) {
+	if screen == nil {
+		return
+	}
+	vector.FillRect(screen, float32(0), float32(0), float32(WindowSizeX), float32(WindowSizeYDiv2), ColorCeiling, false)
+}
+
+// drawFloor draws the floor color rectangle.
+func drawFloor(screen *ebiten.Image) {
+	if screen == nil {
+		return
+	}
+	vector.FillRect(
+		screen,
+		float32(0),
+		float32(WindowSizeYDiv2),
+		float32(WindowSizeX),
+		float32(WindowSizeYDiv2),
+		ColorFloor,
+		false,
+	)
 }
