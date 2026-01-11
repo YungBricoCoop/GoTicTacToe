@@ -8,9 +8,11 @@ require (
 )
 
 require (
+	github.com/ebitenui/ebitenui v0.7.2 // indirect
+	github.com/frustra/bbcode v0.0.0-20201127003707-6ef347fbe1c8 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200707082815-5321531c36a2 // indirect
-	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
-	golang.org/x/mobile v0.0.0-20210208171126-f462b3930c8f // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
+	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
 )
 
 require (
