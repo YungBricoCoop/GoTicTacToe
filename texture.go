@@ -81,7 +81,22 @@ func LoadTextures() (TextureMap, error) {
 	return out, nil
 }
 
-// parseNumericFilenameUint8 returns the uint8 value represented by the filename.
+func LoadHUDImage(name string) (*ebiten.Image, error) {
+	fullPath := filepath.ToSlash(filepath.Join(TextureFolder, name))
+	f, errO := texturesFS.Open(fullPath)
+	if errO != nil {
+		return nil, fmt.Errorf("open HUD image %q: %w", fullPath, errO)
+	}
+
+	img, _, errI := ebitenutil.NewImageFromReader(f)
+	_ = f.Close()
+	if errI != nil {
+		return nil, fmt.Errorf("decode HUD image %q: %w", fullPath, errI)
+	}
+	return img, nil
+}
+
+// parseNumericFilenameUint8 returns the uint8 value represented by the filename
 func parseNumericFilenameUint8(filename string) (uint8, error) {
 	base := strings.TrimSuffix(filename, filepath.Ext(filename))
 	n, err := strconv.Atoi(base)

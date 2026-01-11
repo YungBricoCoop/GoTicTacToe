@@ -55,18 +55,6 @@ const (
 
 	TextureSize   = 64
 	TextureFolder = "assets/textures"
-	SpriteFolder  = "assets/sprites"
-
-	MaxRayIter = MapGridSize * MapGridSize
-
-	MapRoomStride = 7
-
-	InitialSpriteXPosX = 11.5
-	InitialSpriteXPosY = 7.0
-	InitialSpriteOPosX = 3.0
-	InitialSpriteOPosY = 4.0
-
-	HalfDivisor = 2.0
 )
 
 func defaultPlayerXSpawn() Vec2 {
@@ -87,8 +75,8 @@ var (
 	ColorMinimapPlayerX = color.RGBA{249, 77, 0, 100}
 	ColorMinimapPlayerO = color.RGBA{86, 229, 252, 100}
 
-	ColorCeiling = color.RGBA{22, 24, 28, 255}
-	ColorFloor   = color.RGBA{17, 15, 15, 255}
+	ColorCeil  = color.RGBA{25, 25, 30, 255}
+	ColorFloor = color.RGBA{20, 18, 18, 255}
 )
 
 //nolint:gochecknoglobals // texture manifest
