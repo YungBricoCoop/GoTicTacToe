@@ -11,7 +11,6 @@ import (
 type Minimap struct{}
 
 func drawPlayer(player *Player, screen *ebiten.Image) {
-
 	px := MinimapPosX + player.pos.X*MinimapGridCellSize
 	py := MinimapPosY + player.pos.Y*MinimapGridCellSize
 
@@ -21,6 +20,8 @@ func drawPlayer(player *Player, screen *ebiten.Image) {
 		col = ColorMinimapPlayerX
 	case PlayerSymbolO:
 		col = ColorMinimapPlayerO
+	case PlayerSymbolNone:
+		return
 	}
 
 	vector.FillRect(

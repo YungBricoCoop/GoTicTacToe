@@ -23,21 +23,32 @@ const (
 // name is the player's name.
 // score is the player's score.
 type Player struct {
-	pos    Vec2
-	dir    Vec2
-	symbol PlayerSymbol
-	name   string
-	score  int
+	pos                Vec2
+	dir                Vec2
+	symbol             PlayerSymbol
+	symbolTextureID    TextureID
+	characterTextureID TextureID
+	name               string
+	score              int
 }
 
 // NewPlayer creates a new player with the given position, symbol, and name.
 func NewPlayer(x, y float64, symbol PlayerSymbol, name string) *Player {
+	symbolTextureID := PlayerXSymbol
+	characterTextureID := PlayerXCharacter
+
+	if symbol == PlayerSymbolO {
+		symbolTextureID = PlayerOSymbol
+		characterTextureID = PlayerOCharacter
+	}
 	return &Player{
-		pos:    Vec2{x, y},
-		dir:    Vec2{-1, 0},
-		symbol: symbol,
-		name:   name,
-		score:  0,
+		pos:                Vec2{x, y},
+		dir:                Vec2{-1, 0},
+		symbol:             symbol,
+		symbolTextureID:    symbolTextureID,
+		characterTextureID: characterTextureID,
+		name:               name,
+		score:              0,
 	}
 }
 

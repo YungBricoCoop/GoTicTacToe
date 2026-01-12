@@ -5,7 +5,6 @@ package main
 
 import (
 	"image/color"
-	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -76,89 +75,10 @@ func NewGame() (*Game, error) {
 	pO := NewPlayer(spawnO.X, spawnO.Y, PlayerSymbolO, "O")
 
 	minimap := &Minimap{}
+	hud := &Hud{}
 	world := &World{fovScale: GetK(PlayerFOV)}
 
-	sprites := []*Sprite{
-		// Lights (4) – placed to softly guide traversal
-		{
-			Position:  Vec2{X: 2.2, Y: 4.7},
-			TextureID: Light,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 11.5, Y: 1.4},
-			TextureID: Light,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 8.4, Y: 14.6},
-			TextureID: Light,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 18.2, Y: 18.6},
-			TextureID: Light,
-			Hidden:    false,
-		},
-
-		{
-			Position:  Vec2{X: 2.9, Y: 5.3},
-			TextureID: SkeletonSkull,
-			Scale:     0.5,
-			Z:         -1.0,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 10.6, Y: 5.1},
-			TextureID: SkeletonSkull,
-			Scale:     0.55,
-			Z:         -1.0,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 15.9, Y: 4.4},
-			TextureID: SkeletonSkull,
-			Scale:     0.45,
-			Z:         -1.0,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 5.2, Y: 11.7},
-			TextureID: SkeletonSkull,
-			Scale:     0.6,
-			Z:         -1.0,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 12.7, Y: 12.4},
-			TextureID: SkeletonSkull,
-			Scale:     0.5,
-			Z:         -1.0,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 17.1, Y: 17.3},
-			TextureID: SkeletonSkull,
-			Scale:     0.55,
-			Z:         -1.0,
-			Hidden:    false,
-		},
-
-		{
-			Position:  Vec2{X: 6.4, Y: 3.2},
-			TextureID: Chains,
-			Scale:     0.45,
-			Z:         0.5,
-			Hidden:    false,
-		},
-		{
-			Position:  Vec2{X: 14.8, Y: 10.6},
-			TextureID: Chains,
-			Scale:     0.5,
-			Z:         0.5,
-			Hidden:    false,
-		},
-	}
+	sprites := createSprites()
 
 	g := &Game{
 		state:          StateNameInput,
@@ -182,6 +102,7 @@ func NewGame() (*Game, error) {
 	g.drawables = append(g.drawables,
 		world,
 		minimap,
+		hud,
 	)
 
 	return g, nil
@@ -290,25 +211,13 @@ func (g *Game) updatePlaying() error {
 	// spawn a visual mark sprite at the center of the cell
 	// this avoids jitter when the player is not perfectly centered in the room
 	cellCenter := Vec2{
-		X: (float64(cx) + 0.5) * MapRoomStride,
-		Y: (float64(cy) + 0.5) * MapRoomStride,
-	}
-
-	// choose the correct sprite texture for the mark
-	var markTexture TextureId
-	switch g.currentPlayer.symbol {
-	case PlayerSymbolX:
-		markTexture = PlayerXSymbol
-	case PlayerSymbolO:
-		markTexture = PlayerOSymbol
-	default:
-		// should never happen, but keep it safe
-		return nil
+		X: (float64(cx) + HalfTile) * MapRoomStride,
+		Y: (float64(cy) + HalfTile) * MapRoomStride,
 	}
 
 	g.sprites = append(g.sprites, &Sprite{
 		Position:  cellCenter,
-		TextureID: markTexture,
+		TextureID: g.currentPlayer.symbolTextureID,
 		Scale:     1.0,
 		Z:         0.0,
 		Hidden:    false,
@@ -366,7 +275,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawPlaying(screen)
 	case StateGameOver:
 		g.drawPlaying(screen)
-		g.drawGameOver(screen)
 	}
 }
 
@@ -391,36 +299,6 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 	for _, obj := range g.drawables {
 		obj.Draw(screen, g)
 	}
-
-	// UI
-	g.drawScoreAndShortcuts(screen)
-
-	if g.state == StatePlaying {
-		g.drawTurnInfo(screen)
-	}
-}
-
-func (g *Game) drawScoreAndShortcuts(screen *ebiten.Image) {
-	score := "Score " + g.playerX.name + ": " + strconv.Itoa(g.playerX.score) +
-		"  " + g.playerO.name + ": " + strconv.Itoa(g.playerO.score)
-
-	g.drawText(screen, score, Margin, HeaderY, TopLeft, color.White)
-	g.drawText(screen, "ESC = quit", WindowSizeX-Margin, HeaderY, TopRight, color.White)
-}
-
-func (g *Game) drawTurnInfo(screen *ebiten.Image) {
-	msg := "Turn: " + g.currentPlayer.name
-	msg += "   (Ctrl + R = full reset)"
-	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
-}
-
-func (g *Game) drawGameOver(screen *ebiten.Image) {
-	msg := "Draw!"
-	if g.winner != nil {
-		msg = g.winner.name + " wins!"
-	}
-	msg += " Click to restart"
-	g.drawText(screen, msg, Margin, BottomY, BottomLeft, color.White)
 }
 
 func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
@@ -469,4 +347,6 @@ func (g *Game) fullReset() {
 
 	g.playerX.name = "X"
 	g.playerO.name = "O"
+
+	//FIXME: only clear placed marks, not lights/decorations
 }

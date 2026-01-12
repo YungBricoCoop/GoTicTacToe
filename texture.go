@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"image"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -25,27 +23,27 @@ type Texture struct {
 }
 
 // TextureMap maps texture IDs to their corresponding Texture.
-type TextureMap map[TextureId]Texture
+type TextureMap map[TextureID]Texture
 
-// TextureId represents the ID of a texture.
+// TextureID represents the ID of a texture.
 // 1-127 are reserved for wall textures.
 // 128-255 are reserved for sprite textures.
-type TextureId uint8
+type TextureID uint8
 
 const (
-	// walls
-	WallBrick       TextureId = 1
-	WallBrickHole   TextureId = 2
-	WallBrickGopher TextureId = 3
+	// WallBrick represents a standard brick wall texture.
+	WallBrick       TextureID = 1
+	WallBrickHole   TextureID = 2
+	WallBrickGopher TextureID = 3
 
-	// sprites
-	PlayerXSymbol    TextureId = 128
-	PlayerXCharacter TextureId = 129
-	PlayerOSymbol    TextureId = 130
-	PlayerOCharacter TextureId = 131
-	SkeletonSkull    TextureId = 132
-	Chains           TextureId = 133
-	Light            TextureId = 134
+	// PlayerXSymbol represents the symbol for Player X.
+	PlayerXSymbol    TextureID = 128
+	PlayerXCharacter TextureID = 129
+	PlayerOSymbol    TextureID = 130
+	PlayerOCharacter TextureID = 131
+	SkeletonSkull    TextureID = 132
+	Chains           TextureID = 133
+	Light            TextureID = 134
 )
 
 // LoadTextures loads all textures defined in imageManifest.
@@ -96,19 +94,6 @@ func LoadHUDImage(name string) (*ebiten.Image, error) {
 	return img, nil
 }
 
-// parseNumericFilenameUint8 returns the uint8 value represented by the filename
-func parseNumericFilenameUint8(filename string) (uint8, error) {
-	base := strings.TrimSuffix(filename, filepath.Ext(filename))
-	n, err := strconv.Atoi(base)
-	if err != nil {
-		return 0, fmt.Errorf("texture filename %q is not a number: %w", filename, err)
-	}
-	if n < 0 || n > 255 {
-		return 0, fmt.Errorf("texture filename %q out of uint8 range: %d", filename, n)
-	}
-	return uint8(n), nil
-}
-
 // sliceIntoVerticalStrips returns TextureSize images of width 1.
 // The source texture must be exactly TextureSize pixels wide.
 func sliceIntoVerticalStrips(src *ebiten.Image) (TextureStrips, error) {
@@ -129,7 +114,7 @@ func sliceIntoVerticalStrips(src *ebiten.Image) (TextureStrips, error) {
 	// array of 1 pixel wide vertical texture strips
 	var strips TextureStrips
 
-	for x := 0; x < TextureSize; x++ {
+	for x := range TextureSize {
 		// take a 1 pixel wide slice from the source texture
 		sub, ok := src.SubImage(image.Rect(x, 0, x+1, height)).(*ebiten.Image)
 		if !ok || sub == nil {

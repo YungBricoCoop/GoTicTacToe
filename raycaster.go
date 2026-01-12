@@ -6,9 +6,9 @@ package main
 import "math"
 
 // RayHit represents the result of casting a ray in the raycasting engine.
-// hit indicates whether a wall was hit.
+// hit indicates if a wall was hit.
 // cellX and cellY are the grid coordinates of the hit cell.
-// distance is the distance from the player to the wall.
+// distance is the distance from the ray origin to the hit point.
 // wallX is the exact position along the wall where the ray hit (between 0 and 1).
 // side indicates whether a vertical (0) or horizontal (1) wall was hit.
 type RayHit struct {
@@ -17,7 +17,14 @@ type RayHit struct {
 	cellY    int
 	distance float64
 	wallX    float64
-	side     int
+	side     uint8
+}
+
+// Grid defines the interface for accessing the world map grid.
+type Grid interface {
+	Width() int
+	Height() int
+	GetTileID(x, y int) (TileID, bool)
 }
 
 // GetK returns the camera plane coefficient based on the player's field of view.
@@ -95,7 +102,7 @@ func CastRay(
 	}
 
 	hit := false
-	side := 0 // 0=vertical wall hit, 1=horizontal wall hit
+	var side uint8 // 0=vertical wall hit, 1=horizontal wall hit
 
 	// dda loop
 	// each iteration moves the ray to the next closest grid cell
@@ -183,7 +190,7 @@ func isGridEmpty(grid Grid) bool {
 // isGridCellNotEmpty returns true if the grid cell at (x, y) is not empty.
 // The cell is considered not empty if its value is different from TileEmpty.
 func isGridCellNotEmpty(grid Grid, x, y int) bool {
-	tileID, outOfBounds := grid.GetTileId(x, y)
+	tileID, outOfBounds := grid.GetTileID(x, y)
 	if outOfBounds {
 		return false
 	}
