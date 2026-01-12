@@ -53,22 +53,27 @@ const (
 	DefaultPlayerOSpawnX = 15.5
 	DefaultPlayerOSpawnY = 15.5
 
+	MapRoomStride = 7
+	MaxRayIter    = MapGridSize * MapGridSize
+
 	TextureSize   = 64
 	TextureFolder = "assets/textures"
 
-	// ===== HUD =====
-	HUDHeight = 140
-	HUDY      = WindowSizeY - HUDHeight
+	HUDHeight      = 140
+	HUDY           = WindowSizeY - HUDHeight
+	HUDLeftW       = 320
+	HUDCenterW     = 640
+	HUDInfoW       = 300
+	HUDRightW      = 300
+	HUDTextPadX    = 16
+	HUDTextPadY    = 24
+	HUDBorderWidth = 2.0
 
-	// 3 blocks (must sum to WindowSizeX)
-	HUDLeftW   = 320
-	HUDCenterW = 640
-	HUDInfoW   = 300 // info block width (ESC / Ctrl+R)
+	HUDResetYOffset = 28
+	HUDPlaceYOffset = 56
 
-	HUDRightW = 300
-
-	HUDTextPadX = 16
-	HUDTextPadY = 24
+	HalfTile    = 0.5
+	HalfDivisor = 2
 )
 
 func defaultPlayerXSpawn() Vec2 {
@@ -89,16 +94,16 @@ var (
 	ColorMinimapPlayerX = color.RGBA{249, 77, 0, 100}
 	ColorMinimapPlayerO = color.RGBA{86, 229, 252, 100}
 
-	ColorCeil  = color.RGBA{25, 25, 30, 255}
-	ColorFloor = color.RGBA{20, 18, 18, 255}
+	ColorCeiling = color.RGBA{25, 25, 30, 255}
+	ColorFloor   = color.RGBA{20, 18, 18, 255}
 
-	// HUD frame style
+	// ColorHUDBorder is the color of the HUD frame style.
 	ColorHUDBorder = color.RGBA{120, 120, 140, 255}
-	HUDBorderWidth = float32(2)
+	ColorHUDFill   = color.RGBA{10, 10, 10, 220}
 )
 
 //nolint:gochecknoglobals // texture manifest
-var imageManifest = map[TextureId]string{
+var imageManifest = map[TextureID]string{
 	// walls
 	WallBrick:       "wall-brick.png",
 	WallBrickHole:   "wall-brick-hole.png",

@@ -53,7 +53,7 @@ func (w *World) ensureRenderBuffers() {
 
 	if w.cameraX == nil || len(w.cameraX) != WindowSizeX {
 		w.cameraX = make([]float64, WindowSizeX)
-		for i := 0; i < WindowSizeX; i++ {
+		for i := range WindowSizeX {
 			w.cameraX[i] = GetCameraX(i, WindowSizeX)
 		}
 	}
@@ -66,7 +66,7 @@ func (w *World) raycastColumnsAndDrawWalls(screen *ebiten.Image, g *Game, p *Pla
 		return
 	}
 
-	for x := 0; x < WindowSizeX; x++ {
+	for x := range WindowSizeX {
 		hit, ok := w.castRayForScreenColumn(g, p, x)
 		if !ok {
 			w.zBuffer[x] = math.Inf(1)
@@ -115,12 +115,12 @@ func (w *World) resolveTextureStripFromHit(g *Game, hit RayHit) (*ebiten.Image, 
 	}
 
 	// get the texture id
-	tileId, outOfBounds := g.worldMap.GetTileId(hit.cellX, hit.cellY)
+	tileID, outOfBounds := g.worldMap.GetTileID(hit.cellX, hit.cellY)
 	if outOfBounds {
 		return nil, false
 	}
 
-	textureID, ok := tileId.TextureID()
+	textureID, ok := tileID.TextureID()
 	if !ok {
 		return nil, false
 	}
@@ -263,10 +263,6 @@ func (w *World) drawSprites(screen *ebiten.Image, g *Game, p *Player) {
 
 // drawSingleSprite projects one sprite into the screen and draws it column by column.
 func (w *World) drawSingleSprite(screen *ebiten.Image, g *Game, p *Player, plane Vec2, s *Sprite) {
-	if screen == nil || g == nil || p == nil || s == nil || g.assets == nil {
-		return
-	}
-
 	texture := g.assets.Textures[s.TextureID]
 	if len(texture.Strips) == 0 {
 		return
@@ -306,6 +302,7 @@ func (w *World) drawSingleSprite(screen *ebiten.Image, g *Game, p *Player, plane
 	if spriteHeight <= 0 {
 		return
 	}
+
 	spriteWidth := spriteHeight
 
 	// vertical placement
@@ -314,8 +311,8 @@ func (w *World) drawSingleSprite(screen *ebiten.Image, g *Game, p *Player, plane
 	drawStartY := -spriteHeight/2 + WindowSizeYDiv2 - zOffsetPx
 
 	// horizontal placement
-	drawStartX := -spriteWidth/2 + spriteScreenX
-	drawEndX := spriteWidth/2 + spriteScreenX
+	drawStartX := -spriteWidth/HalfDivisor + spriteScreenX
+	drawEndX := spriteWidth/HalfDivisor + spriteScreenX
 
 	// clip to screen bounds
 	if drawStartX < 0 {

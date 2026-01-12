@@ -45,13 +45,13 @@ func NewMap() Map {
 	}
 }
 
-// Texture returns the texture ID for the tile type.
+// TextureID returns the texture ID for the tile type.
 // Returns ok=false for empty tiles.
-func (t TileID) TextureID() (TextureId, bool) {
+func (t TileID) TextureID() (TextureID, bool) {
 	if t == TileEmpty {
 		return 0, false
 	}
-	return TextureId(t), true
+	return TextureID(t), true
 }
 
 // Width returns the width of the map in tiles.
@@ -76,8 +76,8 @@ func (m Map) IsWalkable(pos Vec2) bool {
 	return m.Tiles[y][x] == TileEmpty
 }
 
-// GetTileId returns the tile value at the given (x, y) coordinates and whether the coordinates are out of bounds.
-func (m Map) GetTileId(x, y int) (TileID, bool) {
+// GetTileID returns the tile value at the given (x, y) coordinates and whether the coordinates are out of bounds.
+func (m Map) GetTileID(x, y int) (TileID, bool) {
 	if y < 0 || y >= m.Height() || x < 0 || x >= m.Width() {
 		return TileEmpty, true
 	}
