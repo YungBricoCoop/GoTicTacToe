@@ -5,26 +5,27 @@ on:
     workflows: ["ci"]
     types:
       - completed
-  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   build:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
+          cache: true
 
       - name: Build WebAssembly binary
         run: |
@@ -32,8 +33,7 @@ jobs:
           GOOS=js GOARCH=wasm go build -o dist/main.wasm .
 
       - name: Copy wasm_exec.js
-        run: |
-          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/
+        run: cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/
 
       - name: Copy static files
         run: |
@@ -51,10 +51,6 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write
-      id-token: write
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
