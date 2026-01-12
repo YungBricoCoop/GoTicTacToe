@@ -31,7 +31,7 @@
 #let versions = (
   (
     version: "1.0",
-    date: datetime(year: 2026, month: 01, day: 11),
+    date: datetime(year: 2026, month: 01, day: 12),
     author: [EM],
     changes: [Version finale],
   ),
@@ -45,79 +45,94 @@
   authors: authors,
   versions: versions,
   supervisors: ("Supcik Jacques",),
-  cover_image_path: "../assets/images/ai_fact_check.png",
+  cover_image_path: "../assets/images/logo.png",
   doc,
 )
 
 = Introduction
 
-Le projet choisi transforme le jeu classique de Tic-Tac-Toe en remplaçant entièrement sa couche visuelle 2D par une interface 3D basée sur le raycasting. Au lieu d'afficher une simple grille en 2D, le joueur se déplace dans un environnement 3D où chaque case du jeu est représentée par une salle dans un labyrinthe. Cette approche permet d'explorer une technique de rendu historique tout en créant une expérience de jeu unique et immersive.
+Le projet Gopher Dungeon reprend le jeu Tic-Tac-Toe et le transpose dans un environnement 3D en utilisant la technique du raycasting. Au lieu d’une grille en 2D, le joueur se déplace dans un labyrinthe en vue à la première personne, où chaque salle représente une case du plateau. Il est possible de se déplacer librement dans cet environnement et de placer son symbole (X ou O) dans la salle correspondante.
 
-L'objectif principal est d'implémenter un moteur de raycasting fonctionnel capable de transformer une carte 2D en rendu 3D temps réel, tout en conservant la logique de jeu du Tic-Tac-Toe. Le projet est développé en Go et compilé en WebAssembly pour être exécuté directement dans le navigateur.
+Le choix du Tic-Tac-Toe vient du fait que ses règles sont simples et bien connues, et qu’il s’agit de la proposition de base du projet. Cela permet de se concentrer principalement sur l’aspect technique, en particulier sur l’implémentation du raycasting.
+
+L’objectif principal du projet est donc d’implémenter un moteur de raycasting fonctionnel capable de transformer une carte 2D en rendu 3D en temps réel, tout en conservant la logique du Tic-Tac-Toe. Le projet est développé en Go et compilé en WebAssembly, ce qui permet de le visualiser directement dans un navigateur web.
 
 = Style de code
+Notre code suit des principes clairs pour garantir une bonne lisibilité et une maintenance simple sur la durée. L’objectif est de garder un code compréhensible, même lorsque la logique devient plus complexe.
 
-Notre code suit des principes clairs pour garantir la lisibilité et la maintenabilité :
+- *Guard clauses* : les conditions de sortie sont placées au début des fonctions afin de limiter l’imbrication et de rendre le flux du code plus lisible
+- *Variables explicites* : les noms de variables sont choisis pour décrire clairement leur rôle et leur intention
+- *Fonctions à responsabilité unique* : chaque fonction effectue une seule tâche bien définie
+- *Commentaires pertinents* : les commentaires sont utilisés uniquement lorsque le comportement du code n’est pas immédiatement évident
 
-- *Guarding clauses* : Les conditions de sortie sont placées en début de fonction pour réduire l'indentation et améliorer la clarté
-- *Variables explicites* : Les noms de variables sont descriptifs et explique leur intention simplement
-- *Fonctions à responsabilité unique* : Chaque fonction effectue une seule tâche bien définie
-- *Commentaires pertinents* : Les commentaires expliquent le code qui n'est pas immédiatement évident
+Pour assurer la qualité globale du code, nous utilisons `golangci-lint` avec une configuration stricte basée sur un Gist public bien connu (475 étoiles au 08.01.26). Le Gist est disponible à l’adresse suivante :
+#link("https://gist.github.com/maratori/47a4d00457a92aa426dbd48a18776322")[Golden config for golangci-lint]
 
-Pour assurer la qualité du code, nous utilisons `golangci-lint` avec une configuration stricte basée sur un Gist public et connu (475 stars le 11.01.26). Voici le lien du Gist #link("https://gist.github.com/maratori/47a4d00457a92aa426dbd48a18776322")[Golden config for golangci-lint
-]. Les règles principales activées sont :
+Les principales règles activées concernent :
+- la détection des erreurs non gérées (`errcheck`)
+- la complexité du code (`gocognit`)
+- la complexité cyclomatique (`cyclop`, `gocyclo`)
+- l’utilisation de nombres magiques (`mnd`)
+- l’interdiction des variables globales (`gochecknoglobals`)
+- le respect des conventions du langage Go (`revive`)
+- la présence et la qualité de la documentation (`godoclint`)
 
-- Les erreurs non gérées (`errcheck`)
-- La complexité (`gocognit`)
-- La complexité cyclomatique (`cyclop`, `gocyclo`)
-- Les nombres magiques (`mnd`)
-- Les variables globales (`gochecknoglobals`)
-- Le respect des conventions Go (`revive`)
-- La documentation (`godoclint`)
+Cette configuration est volontairement très stricte, mais elle permet de maintenir un code propre, cohérent et plus facile à relire tout au long du projet.
 
-Cette configuration est très stricte mais nous aide à maintenir un code propre et cohérent tout au long du projet.
+= Raycasting : Principe et fonctionnement
 
-= Raycasting : Principe et Fonctionnement
+Le raycasting est une technique de rendu qui permet de créer l’illusion de la 3D à partir d’une carte en 2D. Le principe est simple : depuis la position du joueur, un rayon est lancé pour chaque colonne verticale de l’écran dans la direction du regard. Lorsqu’un rayon touche un mur, la distance calculée détermine la hauteur de la colonne affichée à l’écran. Plus le mur est proche, plus la colonne est haute, ce qui donne une impression de profondeur.
 
-Le raycasting est une technique qui crée l'illusion de la 3D en projetant des rayons depuis la position du joueur. Pour chaque colonne verticale de l'écran, un rayon est lancé dans la direction de vue du joueur. La hauteur de chaque colonne affichée dépend de la distance calculée, plus l'objet est proche, plus la colonne est haute.
-Cette technique était très populaire pour d'ancien jeux comme Wolfenstein 3D et Doom, car elle permettait de simuler un environnement 3D avec des ressources limitées. Actuellement cette méthode n'est plus du tout utilisé car des nouvelles techniques sont apparus qui sont beaucoup plus efficace mais extrement plus complexe à implémenter. Cette méthode est très interessante car la complexité pour la comprendre et assez faible et donc l'implémentation est relativement simple même si le code est assez conséquent.
+Cette technique était très utilisée dans des jeux comme *Wolfenstein* 3D ou *Doom*, car elle permettait de simuler un environnement 3D avec des ressources limitées. Aujourd’hui, le raycasting est remplacé par des moteurs 3D modernes, beaucoup plus efficaces mais aussi beaucoup plus complexes. Le raycasting reste par contre très intéressant, car il est assez simple à comprendre et permet de comprendre la base du rendu 3D. La figure(@fig:raycasting-example) représente un exemple de rendu en raycasting, tiré du jeu Wolfenstein 3D. #link("https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2270/0000002413.1920x1080.jpg?t=1750784646")[image source].
 
-Dans tous les scène 3D à la première personne, il y'a un paramètre nommé le FOV (Field Of View) qui détermine l'angle de vision du joueur. Un FOV plus large permet de voir plus de l'environnement mais peut aussi déformer la perspective. En général un FOV entre 60 et 90 degrés est utilisé pour un rendu naturel. Dans notre projet nous avons choisi un FOV de 1.58 radians (environ 90 degrés), cela donne un bon rendu visuel. Le fov nous permet de calculer la direction de chaque rayon à lancer en fonction de la position du joueur et de l'angle de vue actuel.
+#figure(
+  image("./assets/images/wolfenstein.jpg", width: 40%),
+  caption: ["Exemple de rendu en Raycasting, Wolfenstein 3D"],
+) <fig:raycasting-example>
 
-Dans l'ordre du rendu, nous commencons simplemet par afficher le sol et le plafond en deux rectangles avec des couleurs unis mais différentess. Ensuite nous lançons un rayon pour chaque colonne de l'écran, calculons la distance au mur le plus proche, déterminons la colonne de texture à afficher, et dessinons la colonne texturée. Enfin nous gérons les sprites (objets 3D) en les triant par distance et en les dessinant correctement avec le Z-buffer. Le z-buffer est un tableau qui stocke la distance de chaque colonne de l'écran au mur le plus proche, cela permet de savoir si un sprite doit être dessiné devant ou derrière un mur.
+Dans une scène en vue à la première personne, un paramètre important est le FOV (Field Of View), qui définit l’angle de vision du joueur. Un FOV plus large permet de voir une plus grande partie de l’environnement, mais peut aussi provoquer des déformations sur les bords de l’écran. En général, un FOV compris entre 60 et 90 degrés est utilisé pour obtenir un rendu naturel. Dans ce projet, un FOV de 1.58 radians (environ 90 degrés) a été choisi. Ce paramètre est utilisé pour calculer la direction de chaque rayon en fonction de la position du joueur et de son orientation.
+
+Le rendu de l’image se fait en plusieurs étapes. On commence par afficher le sol et le plafond avec simplement deux rectangles de couleurs unies. Ensuite, un rayon est lancé pour chaque colonne de l’écran pour calculer la distance jusqu’au mur le plus proche. À partir de cette distance, la colonne de texture correspondante est déterminée et dessinée à l’écran. Enfin, les sprites (objets 3D) sont affichés. Ils sont triés par distance et rendus à l’aide d’un Z-buffer, qui stocke la distance de chaque colonne au mur le plus proche. Cela permet de savoir si un sprite doit être affiché devant ou derrière un mur.
 
 == Algorithme DDA (Digital Differential Analyzer)
 
-Le but du raycasting est simplement d'envoyer un rayon dans une direction et de savoir à quelle distance il va toucher un mur. Par logique on pourrait juste avancer le long du rayon par petits incréments et vérifier à chaque étape si on a touché un mur, cette méthode ce nomme le *Ray Marching*. Cependant cette méthode est inefficace car elle nécessite beaucoup d'itérations pour chaque rayon, surtout si les murs sont éloignés et choisir un incrément trop grand peut faire rater des murs.
+Comme vu dans le chapitre précédent, le principe du raycasting est d’envoyer un rayon dans une direction donnée et de récupérer la distance à laquelle il touche le mur le plus proche. Cette distance est ensuite utilisée pour déterminer l’affichage à l’écran.
 
-L'algorithme *DDA* (Digital Differential Analyzer) corrige ce problème en parcourant la grille de manière efficace en sautant de cellule en cellule. Les étapes principales pour chaque rayon sont :
+Une première approche consiste à avancer le long du rayon par petits incréments et à vérifier à chaque étape si un mur est touché. Cette méthode s’appelle le *Ray Marching*. Elle est simple à comprendre, mais elle devient rapidement inefficace. Elle demande beaucoup d’itérations pour chaque rayon, surtout lorsque les murs sont éloignés. En plus de cela, choisir un incrément trop grand peut faire passer le rayon à travers certains murs.
 
-+ *Initialisation* : On calcule pour chaque direction (X et Y) la distance à parcourir pour atteindre la prochaine ligne de grille
-+ *Itération* : À chaque étape, on avance vers la ligne de grille la plus proche (verticale ou horizontale)
-+ *Détection* : Dès qu'on entre dans une cellule contenant un mur, on s'arrête et on retourne la distance
+L’algorithme *DDA* (Digital Differential Analyzer) permet de résoudre ce problème de manière beaucoup plus efficace. Au lieu d’avancer progressivement le long du rayon, il se déplace directement de cellule en cellule, en sautant d’une ligne de grille à la suivante. Cela réduit fortement le nombre de calculs nécessaires.
 
+Les étapes principales pour chaque rayon sont :
 
-La figure @fig:raycasting-ray-marching-and-dda illustre la différence entre le ray marching et l'algorithme DDA optimisé. Visuellement l'on voit assez rapidement l'avantage du DDA qui effectue beaucoup moins d'itérations pour atteindre le mur, 8 iteration pour le DDA et 15 pour le Ray marching. L'effet peux sembler négligeable, cependant dans l'exemple il y'a seulement 1 rayon, mais si nous considérons un écran de 1280 pixels de large, cela fait 1280 rayons à lancer à chaque frame. Avec le Ray Marching cela ferait 19200 itérations contre seulement 10240 pour le DDA, soit presque le double d'itérations. Ici c'est un exemple simple, en général le dda est beaucoup plus efficace que le ray marching, surtout dans des environnements complexes avec beaucoup de murs éloignés.
++ *Initialisation* : calcul des distances à parcourir en X et en Y pour atteindre la prochaine ligne de grille
++ *Itération* : à chaque étape, le rayon avance vers la ligne de grille la plus proche (verticale ou horizontale)
++ *Détection* : dès qu’une cellule contenant un mur est atteinte, l’algorithme s’arrête et retourne la distance
+
+La figure @fig:raycasting-ray-marching-and-dda montre la différence entre le ray marching et l’algorithme DDA optimisé. On voit rapidement l’avantage du DDA, qui effectue moins d’itérations pour atteindre le mur : dans cet exemple, 8 itérations pour le DDA contre 15 pour le ray marching. Cette différence peut sembler faible, mais elle devient importante lorsqu’on considère qu’un rayon est lancé pour chaque colonne de l’écran. Par exemple, pour un écran de 1280 pixels de large, cela représente 1280 rayons par frame. Avec le ray marching, cela correspondrait à environ 19200 itérations, contre seulement 10240 avec le DDA, soit presque deux fois moins de calculs.
+
+Cet exemple reste volontairement simple, mais dans des environnements plus complexes, avec des murs éloignés, le DDA est en général beaucoup plus efficace que le ray marching.
 
 #figure(
   image("./assets/images/ray_marching_and_dda.svg", width: 80%),
   caption: ["Ray Marching vs DDA"],
 ) <fig:raycasting-ray-marching-and-dda>
 
-L'implémentation de l'algorithme DDA est guidée par les explications présentes sur le site #link("https://lodev.org/cgtutor/raycasting.html")[Lode's Computer Graphics Tutorial - Raycasting].
+L’implémentation de l’algorithme DDA est guidée par les explications présentes sur le site
+#link("https://lodev.org/cgtutor/raycasting.html")[Lode's Computer Graphics Tutorial - Raycasting].
 
 == Sélection de la texture
 
-Par défault dans le raycasting nous ne sommes pas obligé d'afficher des textures sur les murs, on peut très bien afficher des murs unis. Cependant pour rendre le rendu plus intéressant visuellement nous avons décidé d'ajouter des textures.
+Dans un moteur de raycasting, il est possible d’afficher des murs avec des couleurs unies, sans utiliser de textures. Cela fonctionne, mais le rendu reste assez simple visuellement. Pour rendre l’environnement plus intéressant et plus lisible, nous avons choisi d’ajouter des textures sur les murs.
 
-Une fois le mur détecté, on détermine quelle colonne de texture afficher :
+Une fois qu’un mur est détecté par un rayon, il faut déterminer quelle partie de la texture doit être affichée. Le principe est le suivant :
 
-+ On récupère la position exacte où le rayon a touché le mur (`wallX`), une valeur entre 0 et 1
-+ On multiplie `wallX` par la largeur de la texture pour obtenir la colonne
-+ Cette colonne est étirée verticalement selon la distance pour créer la perspective
++ on récupère la position exacte où le rayon touche le mur, appelée `wallX`, une valeur comprise entre 0 et 1
++ cette valeur est multipliée par la largeur de la texture pour obtenir la colonne de texture correspondante
++ cette colonne est ensuite étirée verticalement en fonction de la distance afin de créer l’effet de perspective
 
+La figure @fig:raycasting-wallx-calculation montre un rayon ainsi que les coordonnées de son point d’impact sur le mur. Selon l’orientation du mur touché (vertical ou horizontal), on utilise soit la coordonnée Y (pour un mur vertical), soit la coordonnée X (pour un mur horizontal) pour calculer la valeur de `wallX`.
 
-La figure @fig:raycasting-wallx-calculation affiche un rayon et les coordonées d'impact sur le mur. En fonction de l'orientation du mur (vertical ou horizontal) nous utilisons soit la coordonnée Y (pour les murs verticaux) soit la coordonnée X (pour les murs horizontaux) pour calculer la coordonnée `wallX`. Dans l'exemple le rayon touche un mur vertical, nous utilisons donc la coordonnée Y de l'impact (ici 6.3) et nous soustrayons la partie entière (6) pour obtenir la partie décimale (0.3). Cette valeur est ensuite multipliée par la largeur de la texture, par exemple 64 pixels, pour obtenir la colonne de texture à afficher ($0.3 * 64 = 19.2$) et donc la collone 19.
+Dans l’exemple présenté, le rayon touche un mur vertical. On utilise donc la coordonnée Y du point d’impact, ici 6.3. En retirant la partie entière (6), on obtient la partie décimale, soit 0.3. Cette valeur est ensuite multipliée par la largeur de la texture, par exemple 64 pixels, ce qui donne $0.3 * 64 = 19.2$. La colonne de texture utilisée est donc la colonne 19.
 
 #figure(
   image("./assets/images/texture_wall_x.svg", width: 40%),
@@ -127,187 +142,252 @@ La figure @fig:raycasting-wallx-calculation affiche un rayon et les coordonées 
 
 = Implémentation du moteur de Raycasting
 
-Le moteur de raycasting est implémenté dans le fichier `raycaster.go` et est utilisé par le fichier `world.go` pour afficher le résultat à l'écran. Le but de ce moteur est de lancer un rayon pour chaque colonne de l'écran, calculer la distance au mur le plus proche, déterminer la colonne de texture à afficher. Le moteur n'affiche pas directement à l'écran, il retourne les informations nécessaires à `world.go` qui se charge du rendu.
+Le moteur de raycasting est implémenté dans le fichier `raycaster.go`. Son rôle est uniquement de gérer la partie calcul : lancer des rayons, détecter les murs et calculer les informations nécessaires au rendu. L’affichage à l’écran est volontairement séparé et géré dans le fichier `world.go`. Cette séparation permet de garder un code plus clair et de distinguer nettement la logique de calcul de la logique de rendu.
 
-Le code du raycasting se trouve dans `raycaster.go`. Voici les fonctions principales :
+Le principe est simple : pour chaque colonne de l’écran, un rayon est lancé depuis la position du joueur. Le moteur calcule la distance jusqu’au mur le plus proche, la cellule touchée dans la grille, ainsi que la position exacte de l’impact sur le mur. Toutes ces informations sont regroupées dans une structure dédiée, qui est ensuite utilisée par `world.go` pour dessiner le résultat.
 
+La structure `RayHit` représente le résultat d’un lancer de rayon :
 
-TODO: Changer pour afficher la nouvelle structure
 ```go
 // RayHit represents the result of casting a ray in the raycasting engine.
-// hit indicates whether a wall was hit.
+// hit indicates if a wall was hit.
 // cellX and cellY are the grid coordinates of the hit cell.
-// distance is the distance from the player to the wall.
+// distance is the distance from the ray origin to the hit point.
 // wallX is the exact position along the wall where the ray hit (between 0 and 1).
 // side indicates whether a vertical (0) or horizontal (1) wall was hit.
 type RayHit struct {
-    hit      bool
-    cellX    int
-    cellY    int
-    distance float64
-    wallX    float64
-    side     int
+	hit      bool
+	cellX    int
+	cellY    int
+	distance float64
+	wallX    float64
+	side     uint8
 }
 ```
 
+Cette structure contient uniquement les données nécessaires au rendu. Le moteur de raycasting ne dessine rien lui-même, il se contente de retourner ces informations de manière propre et exploitable.
+
+La fonction principale du moteur est CastRay. Elle implémente l’algorithme DDA vu précédemment. Son rôle est juste de parcourir la grille cellule par cellule jusqu’à toucher un mur ou sortir de la carte.
 
 Cette fonction implémente l'algorithme DDA complet :
 
 ```go
 func CastRay(
-    playerPosition Vec2,
-    rayDirection Vec2,
-    grid Grid,
-    maxIterations int,
+	playerPosition Vec2,
+	rayDirection Vec2,
+	grid Grid,
+	maxIterations int,
 ) RayHit {
-    // Cellule de départ
-    mapX := int(playerPosition.X)
-    mapY := int(playerPosition.Y)
+	// grid cell the player is currently standing on
+	mapX := int(playerPosition.X)
+	mapY := int(playerPosition.Y)
 
-    // Calcul des deltas : distance pour traverser une cellule
-    deltaDistX := math.Abs(1 / rayDirection.X)
-    deltaDistY := math.Abs(1 / rayDirection.Y)
+	// deltaDistX tells us how far along the ray we must travel to cross one vertical grid line
+	// deltaDistY does the same for horizontal grid lines
+	deltaDistX := math.Abs(1 / rayDirection.X)
+	deltaDistY := math.Abs(1 / rayDirection.Y)
 
-    // Détermination de la direction et distance initiale
-    var stepX, stepY int
-    var sideDistX, sideDistY float64
+	// ...
+	// setup step direction and initial side distances
+	// ...
 
-    if rayDirection.X < 0 {
-        stepX = -1
-        sideDistX = (playerPosition.X - float64(mapX)) * deltaDistX
-    } else {
-        stepX = 1
-        sideDistX = (float64(mapX) + 1.0 - playerPosition.X) * deltaDistX
-    }
+	// dda loop
+	for range maxIterations {
+		if sideDistX < sideDistY {
+			sideDistX += deltaDistX
+			mapX += stepX
+			side = 0
+		} else {
+			sideDistY += deltaDistY
+			mapY += stepY
+			side = 1
+		}
 
-    // Boucle DDA : avancer jusqu'à toucher un mur
-    for range maxIterations {
-        if sideDistX < sideDistY {
-            sideDistX += deltaDistX
-            mapX += stepX
-            side = 0
-        } else {
-            sideDistY += deltaDistY
-            mapY += stepY
-            side = 1
-        }
+		if isGridCellNotEmpty(grid, mapX, mapY) {
+			hit = true
+			break
+		}
+	}
 
-        if isGridCellNotEmpty(grid, mapX, mapY) {
-            hit = true
-            break
-        }
-    }
+	// compute distance and wallX
+	// ...
 
-    // Calcul de la distance perpendiculaire
-    if side == 0 {
-        distance = sideDistX - deltaDistX
-    } else {
-        distance = sideDistY - deltaDistY
-    }
-
-    return RayHit{...}
+	return RayHit{
+		hit:      true,
+		cellX:    hitCellX,
+		cellY:    hitCellY,
+		distance: distance,
+		wallX:    wallX,
+		side:     side,
+	}
 }
 ```
 
-Le fichier `world.go` orchestre le rendu complet en appelant `CastRay` pour chaque colonne de l'écran :
+Cette fonction est volontairement générique. Elle ne dépend pas du rendu, uniquement de la position du joueur, de la direction du rayon et de la grille du monde. Cela permet de tester facilement cette partie du code et de la réutiliser sans dépendre du reste du moteur.
+
+Le fichier `world.go` s’occupe du rendu à l’écran à partir des résultats du raycasting. Il parcourt chaque colonne de l’écran et lance un rayon correspondant à cette colonne.
+
+Pour chaque colonne, la fonction `castRayForScreenColumn` calcule la direction du rayon en fonction de la position du joueur et du FOV, puis appelle `CastRay` pour récupérer les informations de collision avec le mur. Si aucun mur n’est touché, une distance infinie est stockée dans le Z-buffer.
+
+Lorsque le rayon touche un mur, la distance est enregistrée dans le Z-buffer. Ce tableau contient la distance du mur le plus proche pour chaque colonne et sert ensuite à gérer correctement l’affichage des sprites.
+
+La fonction `resolveTextureStripFromHit` permet de choisir la texture et la colonne de texture à afficher en fonction de la cellule touchée et de la valeur `wallX`. La hauteur du mur projetée à l’écran est ensuite calculée à partir de la distance, puis la bande de texture correspondante est dessinée à la bonne position avec `drawTexturedWallSlice`.
+
 
 ```go
 func (w *World) raycastColumnsAndDrawWalls(screen *ebiten.Image, g *Game, p *Player) {
-    for x := 0; x < WindowSizeX; x++ {
-        // Lancer un rayon pour cette colonne
-        hit, ok := w.castRayForScreenColumn(g, p, x)
-        if !ok {
-            continue
-        }
+	for x := range WindowSizeX {
+		hit, ok := w.castRayForScreenColumn(g, p, x)
+		if !ok {
+			w.zBuffer[x] = math.Inf(1)
+			continue
+		}
 
-        // Stocker la distance dans le Z-buffer
-        w.zBuffer[x] = hit.distance
+		// store distance in Z-buffer
+		w.zBuffer[x] = hit.distance
 
-        // Récupérer la colonne de texture correspondante
-        strip, ok := w.resolveTextureStripFromHit(g, hit)
+		strip, ok := w.resolveTextureStripFromHit(g, hit)
+		if !ok {
+			continue
+		}
 
-        // Calculer la hauteur du mur à l'écran
-        lineH := w.wallSliceHeightOnScreen(hit.distance)
+		lineH := w.wallSliceHeightOnScreen(hit.distance)
+		drawStart := w.wallSliceTopY(lineH)
 
-        // Dessiner la colonne texturée
-        w.drawTexturedWallSlice(screen, strip, x, drawStart, lineH, hit.distance)
-    }
+		w.drawTexturedWallSlice(screen, strip, x, drawStart, lineH, hit.distance)
+	}
 }
 ```
 
-= Gestion des Textures et Design
+Ce découpage permet de garder une logique claire :
+- `raycaster.go` s’occupe uniquement de lancer des rayons et de faire les calculs mathématiques
+- `world.go` s’occupe de transformer ces résultats en pixels à l’écran
 
-Toutes les textures du projet ont été générées avec ChatGPT, ce qui s'est révélé étonnamment puissant et pratique. ChatGPT ne permet de générer que des images en haute résolution, mais il suffit de les redimensionner à 64x64 pixels dans Figma pour obtenir le format requis et les couleurs voulues. Nous avons décider d'adopter un style pixel art et plutot sombre pour coller à l'ambiance d'un donjon. Les textures ont une taille fixe de 64x64 pixels, ce qui créé cet effet pixelisé et permet aussi d'améliorer les performances en réduisant la quantité de données à traiter.
+= Gestion des textures et design
 
-Le design system complet est disponible sur #link("https://www.figma.com/design/I9ar6LeUqDPe7zEKGo3DGS/Ray-Casting?node-id=0-1&t=Cq7NpTd7JF853whj-1")[Figma - Ray Casting Design System].
+Toutes les textures du projet sont générées avec ChatGPT. Cet outil s’est révélé très pratique pour produire rapidement des textures cohérentes entre elles. Les images générées sont en haute résolution, puis redimensionnées en *64x64 pixels* dans Figma pour obtenir la taille nécessaire. Figma est également utilisé pour modifier certaines textures, par exemple pour ajouter de la surbrillance ou ajuster les couleurs.
 
-Le raycasting necessite toujours de dessiner des rectangles de 1 pixel de large pour chaque colonne de l'écran. Pour optimiser le rendu, lors du chargement initiales du jeu , toutes les textures sont prédécoupées en bandes verticales d'un pixel de large et stockées dans une structure `TextureMap` pour un accès rapide lors du rendu. Cela nous permet de pouvoir directement accéder à la bande verticale nécessaire sans avoir à découper l'image à chaque frame, ce qui serait très coûteux en performance.
+Nous avons choisi un style *pixel art*, avec une palette plutôt sombre, pour correspondre à l’ambiance d’un donjon. Utiliser des textures de taille fixe en 64x64 pixels renforce cet effet pixelisé tout en améliorant les performances, car cela réduit la quantité de données à traiter lors du rendu.
 
-TODO: Affiche le type Texture et TextureMap avant ce code
+L’ensemble du design system, incluant les textures et les choix visuels, est regroupé dans un fichier Figma accessible ici :
+#link("https://www.figma.com/design/I9ar6LeUqDPe7zEKGo3DGS/Ray-Casting?node-id=0-1&t=Cq7NpTd7JF853whj-1")[Figma - Ray Casting Design System].
+
+Le code ci-dessous nous permet de gérer le chargement des textures et de les préparer dans un format adapté au raycasting. La première partie, `imageManifest`, est une table de correspondance entre un `TextureID` et un nom de fichier. On l’utilise pour centraliser la liste des textures au même endroit. Cela évite d’avoir des noms de fichiers écrits en dur un peu partout dans le code, et ça simplifie l’ajout ou le remplacement d’une texture.
+
+Ensuite, côté structures, on stocke chaque texture sous deux formes :
+- Source contient l’image complète (utile si on veut afficher la texture en entier, par exemple pour le HUD)
+- Strips contient la texture déjà découpée en bandes verticales de 1 pixel de large, ce qui correspond directement à la manière dont on dessine un mur en raycasting.
+
+Un point important dans ce code est l’utilisation de l’instruction `//go:embed`. Elle permet d’inclure directement les fichiers de textures dans le binaire lors de la compilation. Cela simplifie grandement la gestion des ressources, car on n’a pas besoin de s’occuper du chargement des fichiers externes à l’exécution, tout est déjà intégré dans le programme.
+
+Enfin, LoadTextures parcourt `imageManifest` et découpe chaque image en bandes verticales avec `sliceIntoVerticalStrips`. Le résultat est stocké dans un `TextureMap`, ce qui permet ensuite d’accéder rapidement à une texture via son TextureID. Le choix de prédécouper les textures au chargement est directement lié au rendu en raycasting. Pendant une frame, on dessine les murs colonne par colonne, donc on a besoin d’accéder très vite à la colonne de texture correspondante. Si on devait découper l’image à chaque frame, ce serait trop coûteux. Là, on fait le travail une seule fois au démarrage, puis le rendu devient simplement une sélection d’images déjà prêtes.
+
 ```go
+// constants.go
+var imageManifest = map[TextureID]string{
+	// walls
+	WallBrick:       "wall-brick.png",
+	WallBrickHole:   "wall-brick-hole.png",
+	WallBrickGopher: "wall-brick-gopher.png",
+
+	// sprites
+	PlayerXSymbol:    "x.png",
+	PlayerXCharacter: "x-player.png",
+	PlayerOSymbol:    "o.png",
+	PlayerOCharacter: "o-player.png",
+	SkeletonSkull:    "skeleton-skull.png",
+	Chains:           "chains.png",
+	Light:            "lantern.png",
+}
+
+// texture.go
+type TextureStrips [TextureSize]*ebiten.Image
+
+// Texture represents a texture with its source image and vertical strips.
+type Texture struct {
+	Source *ebiten.Image
+	Strips TextureStrips
+}
+
+// TextureMap maps texture IDs to their corresponding Texture.
+type TextureMap map[TextureID]Texture
+
 //go:embed assets/textures/*.png
 var texturesFS embed.FS
 
 func LoadTextures() (TextureMap, error) {
-    for id, filename := range imageManifest {
-        img, _, err := ebitenutil.NewImageFromReader(f)
+	for id, filename := range imageManifest {
+		img, _, err := ebitenutil.NewImageFromReader(f)
 
-        strips, err := sliceIntoVerticalStrips(img)
+		strips, err := sliceIntoVerticalStrips(img)
 
-        out[id] = Texture{
-            Source: img,
-            Strips: strips,
-        }
-    }
+		out[id] = Texture{
+			Source: img,
+			Strips: strips,
+		}
+	}
 }
 ```
 
-Chaque texture est prédécoupée en 64 bandes verticales d'un pixel de large, permettant un rendu extrêmement rapide lors du raycasting.
-
 = Tests et Validation
 
-TODO: Décrire les tests unitaires et d'intégration mis en place pour valider le moteur de raycasting et la logique du jeu.
+Des tests unitaires sont mis en place pour valider les parties importantes du projet, en particulier la logique du jeu et le moteur de raycasting.
 
+En Go, l’écriture et l’exécution des tests sont très simples. Il suffit de créer un fichier dont le nom se termine par `_test.go` et d’y définir des fonctions qui commencent par `Test...`. Go détecte automatiquement ces fichiers et exécute les tests avec la commande suivante :
+
+`go test -v ./...`
+
+Le fichier `board_test.go` se concentre sur la logique du Tic-Tac-Toe, notamment la fonction `CheckWinner`. Plusieurs cas sont testés, comme les victoires par ligne, par colonne, par diagonale et aussi les situations de match nul. Cela permet de s’assurer que l’état du jeu est correctement évalué dans tous les cas.
+
+Pour le moteur de raycasting, le fichier `raycaster_test.go` vérifie les calculs de base :
+- `TestRayDirection` s’assure que la direction du rayon est correctement calculée en fonction de l’orientation du joueur et du FOV.
+- `TestRayCast` utilise une `MockGrid` pour simuler un environnement simple et vérifier que les rayons :
+  - détectent correctement les murs (`hit.hit`)
+  - retournent les bonnes coordonnées de cellule (`hit.cellX`, `hit.cellY`)
+  - calculent une distance cohérente
+  - identifient correctement le côté du mur touché (`vertical` ou `horizontal`), ce qui est important pour le rendu des textures et de l’éclairage.
 
 = Pipeline CI/CD
 
-Le projet utilise des GitHub Actions pour automatiser le workflow de développement et de déploiement. Deux pipelines sont configurées :
+Pour éviter les erreurs et garder un projet stable, nous utilisons un pipeline CI/CD simple basé sur GitHub Actions. L’objectif est d’automatiser les vérifications du code et le déploiement, sans avoir à gérer ces étapes manuellement à chaque modification.
 
-- *CI* (`.github/workflows/ci.yml`) : Linting du code avec `golangci-lint` à chaque push et pull request
-- *CD* (`.github/workflows/cd.yml`) : Compilation en WebAssembly et déploiement sur GitHub Pages après une CI réussie
+Deux pipelines sont utilisés :
 
+- *CI* (`.github/workflows/ci.yml`) : vérification du code avec `golangci-lint`, suivie de l’exécution des tests unitaires à chaque push et pull request
+- *CD* (`.github/workflows/cd.yml`) : compilation du projet en WebAssembly et déploiement automatique sur GitHub Pages après une CI réussie
 
-= Résultat Final
+= Résultat final
 
-Le résultat correspond exactement à notre vision, un jeu de Tic-Tac-Toe normal, mais présenté dans un environnement 3D. Le joueur peut se déplacer dans une sorte labyrinthe où chaque salle représente une case du jeu. Les joueurs peuvent se déplacer avec les touches *WASD* et placer leurs symboles (X ou O) dans les cases en appuyant sur la touche *E*. Nous sommes vraiment fiers du résultat final, qui combine une technique de rendu classique avec une logique de jeu simple pour créer une expérience unique et immersive.
+Le résultat final est globalement très satisfaisant. L’objectif principal était de réussir à implémenter un moteur de raycasting fonctionnel et de l’intégrer à un jeu simple avec du code élégant, et nous pensons que cet objectif est atteint.
 
-Le jeu est jouable directement dans le navigateur à l'adresse : #link("https://yungbricocoop.github.io/GoTicTacToe/")[yungbricocoop.github.io/GoTicTacToe]
+Le moteur de raycasting est stable, le rendu est fluide et l’intégration avec la logique du Tic-Tac-Toe fonctionne correctement. Le fait de pouvoir se déplacer dans un environnement 3D pour interagir avec un jeu aussi simple donne un résultat vraiment cool. Ce qui est intéressant, c’est que le code étant assez simple, il est possible de l’étendre facilement avec de nouvelles fonctionnalités.
+
+Le jeu est jouable directement dans le navigateur à l’adresse suivante :
+#link("https://yungbricocoop.github.io/GoTicTacToe/")[yungbricocoop.github.io/GoTicTacToe]
 
 
 = Apprentissages et améliorations
 
-Ce projet nous a beaucoup appris sur plusieurs aspects du développement logiciel.
+Ce projet a permis d’apprendre plusieurs aspects importants du développement logiciel, aussi bien sur le plan technique que sur le travail en équipe.
 
-La collaboration sur un projet d'une certaine ampleur nécessite une bonne entente et une communication claire. Nous avons dû synchroniser régulièrement nos efforts et nous assurer que les modifications de chacun s'intègrent correctement. L'utilisation de Git avec des branches séparées et des pull requests a été essentielle pour maintenir un code stable.
+Il a notamment permis d’apprendre à collaborer sur un projet en Go. Selon le langage utilisé, la manière de structurer le code, de gérer les types et les structures peut beaucoup changer. Travailler à plusieurs sur un même codebase Go a demandé une bonne coordination, en particulier lors de modifications sur des fichiers communs. L’utilisation de Git avec des branches et des pull requests a été essentielle, même si quelques conflits sont apparus lorsque des fichiers similaires étaient modifiés en parallèle.
 
-Le raycasting est conceptuellement simple : lancer des rayons et calculer des distances. Cependant, l'implémentation révèle de nombreux détails subtils auxquels il faut faire attention : gérer correctement les divisions par zéro, éviter l'effet fish-eye en utilisant la distance perpendiculaire, gérer les bords de la carte. Écrire un code clair et compréhensible pour cet algorithme s'est révélé difficile, nécessitant plusieurs refactorings pour améliorer la structure.
+Sur le plan technique, le projet a permis de comprendre en profondeur le fonctionnement du raycasting et tout ce qui en découle : calcul des distances, gestion du FOV, chargement et découpage des textures, affichage des murs et rendu des sprites avec un Z-buffer. Même si le principe du raycasting est simple sur le papier, son implémentation devient rapidement complexe et désordonnée.
 
-Nous avons notamment dû extraire des fonctions comme `isGridCellNotEmpty`, `isRayOutOfBounds` pour rendre la boucle DDA plus lisible. Le découpage du rendu en étapes distinctes (raycasting des murs, puis rendu des sprites) a également clarifié le code.
+Le développement a également nécessité beaucoup de refactoring. La manière dont Go gère les types, les interfaces et les structures n’est pas toujours intuitive au départ, et plusieurs choix d’architecture ont évolué au fil du projet. Des fonctions ont été extraites pour rendre le code plus lisible, et le rendu a été découpé en étapes claires pour limiter la complexité.
 
-La gestion du Z-buffer pour afficher correctement les sprites derrière les murs a demandé une réflexion particulière sur l'ordre de rendu et le stockage des distances.
+Concernant les améliorations possibles, le code responsable de l’affichage des murs et des sprites reste encore difficile à lire et pourrait être simplifié. La qualité des tests pourrait aussi être améliorée : le coverage est relativement bas, et une meilleure séparation du code en packages faciliterait l’écriture de tests plus précis. Mais cela demanderait beaucoup de refactoring.
 
-Le raycasting est une technique simple en théorie, mais son implémentation est assez complexe, surtout la partie affichage au final. Le code require beaucoup de petit calcule et le code vient très rapidement illisible, nous avons donc dû faire beaucoup d'efforts pour garder un code propre et compréhensible mais nous pensons qu'il est encore perfectible. Dans les améliorations futures, nous pourrions envisager d'ajouter des fonctionnalités comme des portes ouvrables, des ennemis basiques qui se déplacent dans le labyrinthe, ou même un mode multijoueur local. Avec l'état actuel du code ces ajouts ne sont pas très compliqués à implémenter.
 
 = Conclusion sur Go
 
-Go est un langage génial pour ce type de projet. Sa syntaxe est simple et lisible, ce qui permet d'avancer rapidement dans le développement sans se perdre dans des abstractions complexes. La courbe d'apprentissage est plutot douce et donc permet à presque n'importe quel developpeur de se lancer rapidement.
+Go est un langage génial pour ce type de projet. Sa syntaxe est simple et lisible, ce qui permet d’avancer rapidement sans se perdre dans des abstractions complexes. La courbe d’apprentissage est plutôt douce, ce qui permet de prendre le langage en main assez vite si l'on code de temps en temps.
 
-La cross-compilation est vraiment ultra pratique, surtout pour WebAssembly. Avec une simple commande `GOOS=js GOARCH=wasm go build`, le projet est compilé pour le web. Go fournit directement `wasm_exec.js` dans son installation, simplifiant encore plus le processus.
+La cross-compilation est vraiment très pratique, surtout pour WebAssembly. Avec une simple commande `GOOS=js GOARCH=wasm go build`, le projet peut être compilé pour le web. Go fournit également `wasm_exec.js` directement dans son installation, ce qui simplifie encore le processus.
 
-Le système de modules et la gestion des dépendances et vraiment très simple. Nous n'avons eu aucun problème à intégrer et mettre à jour des bibliothèques externes comme Ebiten.
+Le système de modules et la gestion des dépendances sont clairs et efficaces. L’intégration et la mise à jour de bibliothèques externes comme Ebiten se font sans difficulté.
 
-Pour conclure, c'est vraiment une très bonne découverte et c'est un language qui fait envie de travailler avec. Peut-être qu'il y'a des petits points négatifs que l'on trouve quand l'on développe des projets plus complexes, mais dans notre cas tout s'est très bien passé.
-
+Dans l’ensemble, Go a été une très bonne découverte pour ce projet. Go a sûrement des limitations et quelques petits défauts, mais pour un projet de cette taille et de cette complexité, il est vraiment agréable à utiliser. Nous pensons réutiliser Go pour d’autres projets à l’avenir, car c’est un langage qui fait vraiment plaisir à utiliser.
 
 = Références
 

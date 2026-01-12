@@ -56,7 +56,7 @@
       row-gutter: info_row_gutter,
 
       [#label("Filière")], [#heading_text(stream)],
-      [#label("Étudiant")], [#heading_text(student)],
+      [#label("Étudiants")], [#heading_text(student)],
       [#label("Superviseur")], [#heading_text(supervisors)],
       ..(if assistants != "" { ([#label("Assistants")], [#heading_text(assistants)]) } else { () }),
       [#label("Date")], [#heading_text(date)],
