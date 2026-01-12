@@ -6,13 +6,14 @@ package main
 import "image/color"
 
 const (
-	WindowSizeX     = 1280
-	WindowSizeXDiv2 = WindowSizeX / 2
-	WindowSizeY     = 720
-	WindowSizeYDiv2 = WindowSizeY / 2
-	WindowTitle     = "Raycastoe"
-	TPS             = 60
-	DeltaTime       = 1.0 / TPS
+	WindowSizeX      = 1280
+	WindowSizeXDiv2  = WindowSizeX / 2
+	WindowSizeY      = 720
+	WindowSizeYDiv2  = WindowSizeY / 2
+	WindowTitle      = "Gopher Dungeon"
+	TPS              = 60
+	DeltaTime        = 1.0 / TPS
+	GameOverDuration = 3.0
 
 	GridSize        = 3
 	MapGridSize     = 22
@@ -86,7 +87,9 @@ func defaultPlayerOSpawn() Vec2 {
 
 //nolint:gochecknoglobals // colors
 var (
-	ColorBackground = color.RGBA{30, 30, 30, 100}
+	ColorBackground         = color.RGBA{30, 30, 30, 100}
+	ColorGameOverText       = color.RGBA{255, 255, 255, 255}
+	ColorGameOverBackground = color.RGBA{0, 0, 0, 100}
 
 	ColorMinimapBorder = color.RGBA{0, 0, 0, 100}
 	ColorMinimapWall   = color.RGBA{200, 200, 200, 100}

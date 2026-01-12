@@ -4,11 +4,13 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type TextAlign int
@@ -38,6 +40,9 @@ type Game struct {
 	state  GameState
 	board  Board
 	winner *Player
+
+	// timer to handle game over transition
+	stateTimer float64
 
 	// players
 	playerX       *Player
@@ -235,8 +240,9 @@ func (g *Game) updatePlaying() error {
 }
 
 func (g *Game) updateGameOver() error {
-	// click to restart
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	g.stateTimer -= DeltaTime
+	if g.stateTimer <= 0 {
+		g.switchPlayer()
 		g.resetBoard()
 	}
 	return nil
@@ -252,6 +258,7 @@ func (g *Game) switchPlayer() {
 
 func (g *Game) handleGameEnd(w PlayerSymbol) {
 	g.state = StateGameOver
+	g.stateTimer = GameOverDuration
 
 	switch w {
 	case PlayerSymbolX:
@@ -275,6 +282,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawPlaying(screen)
 	case StateGameOver:
 		g.drawPlaying(screen)
+		g.drawGameOver(screen)
 	}
 }
 
@@ -302,11 +310,28 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 }
 
 func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
+	g.drawTextWithFace(screen, msg, x, y, align, col, g.assets.NormalTextFace, TextLineSpacing)
+}
+
+func (g *Game) drawBigText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
+	g.drawTextWithFace(screen, msg, x, y, align, col, g.assets.BigTextFace, BigTextLineSpacing)
+}
+
+// drawTextWithFace draws text with the given face and line spacing.
+func (g *Game) drawTextWithFace(
+	screen *ebiten.Image,
+	msg string,
+	x, y float64,
+	align TextAlign,
+	col color.Color,
+	face *text.GoTextFace,
+	lineSpacing float64,
+) {
 	op := &text.DrawOptions{}
-	op.LineSpacing = g.assets.NormalTextFace.Size + TextLineSpacing
+	op.LineSpacing = face.Size + lineSpacing
 	op.ColorScale.ScaleWithColor(col)
 
-	w, h := text.Measure(msg, g.assets.NormalTextFace, op.LineSpacing)
+	w, h := text.Measure(msg, face, op.LineSpacing)
 
 	switch align {
 	case TopLeft, CenterLeft, BottomLeft:
@@ -325,18 +350,50 @@ func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align Te
 	}
 
 	op.GeoM.Translate(x, y)
-	text.Draw(screen, msg, g.assets.NormalTextFace, op)
+	text.Draw(screen, msg, face, op)
+}
+
+func (g *Game) drawGameOver(screen *ebiten.Image) {
+	var msg string
+	if g.winner != nil {
+		symbol := "O"
+		if g.winner.symbol == PlayerSymbolX {
+			symbol = "X"
+		}
+		msg = fmt.Sprintf("%s WON", symbol)
+	} else {
+		msg = "DRAW"
+	}
+
+	vector.FillRect(screen, 0, 0, float32(WindowSizeX), float32(WindowSizeY), ColorGameOverBackground, false)
+	g.drawBigText(
+		screen,
+		msg,
+		float64(WindowSizeXDiv2),
+		float64(WindowSizeYDiv2),
+		Center,
+		ColorGameOverText,
+	)
 }
 
 func (g *Game) resetBoard() {
 	g.board.Reset()
 	g.winner = nil
 	g.state = StatePlaying
-	g.currentPlayer = g.playerX
+
+	// remove mark sprites (keeping decorations like lights)
+	filtered := g.sprites[:0]
+	for _, s := range g.sprites {
+		if s.TextureID != PlayerXSymbol && s.TextureID != PlayerOSymbol {
+			filtered = append(filtered, s)
+		}
+	}
+	g.sprites = filtered
 }
 
 func (g *Game) fullReset() {
 	g.resetBoard()
+	g.currentPlayer = g.playerX
 
 	g.playerX.score = 0
 	g.playerO.score = 0
