@@ -45,14 +45,15 @@ const (
 	MinimapPlayerArrowLength = 20
 	MinimapPlayerArrowWidth  = 2
 
-	PlayerFOV           = 1.58
-	PlayerMovementSpeed = 5.0 // units per second
-	PlayerRotationSpeed = 3.0 // radians per second
+	PlayerFOV                        = 1.58
+	PlayerMovementSpeed              = 5.0 // units per second
+	PlayerRotationSpeed              = 3.0 // radians per second
+	PlayerMovementSpeedMultiplicator = 2.0
 
-	DefaultPlayerXSpawnX = 11.5
-	DefaultPlayerXSpawnY = 11.5
-	DefaultPlayerOSpawnX = 15.5
-	DefaultPlayerOSpawnY = 15.5
+	DefaultPlayerXSpawnX = 12.8
+	DefaultPlayerXSpawnY = 12.8
+	DefaultPlayerOSpawnX = 11.5
+	DefaultPlayerOSpawnY = 11.5
 
 	MapRoomStride = 7
 	MaxRayIter    = MapGridSize * MapGridSize
@@ -60,21 +61,25 @@ const (
 	TextureSize   = 64
 	TextureFolder = "assets/textures"
 
-	HUDHeight      = 140
-	HUDY           = WindowSizeY - HUDHeight
-	HUDLeftW       = 320
-	HUDCenterW     = 640
-	HUDInfoW       = 300
-	HUDRightW      = 300
-	HUDTextPadX    = 16
-	HUDTextPadY    = 24
-	HUDBorderWidth = 2.0
+	HudHeightPixels      = 100
+	HudTopLeftYPixels    = WindowSizeY - HudHeightPixels
+	HudBorderWidthPixels = 2.0
 
-	HUDResetYOffset = 28
-	HUDPlaceYOffset = 56
+	HudPanelOuterPaddingXPixels = 16
+	HudPanelOuterPaddingYPixels = 14
+	HudImageInnerPaddingPixels  = 10
 
-	HalfTile    = 0.5
-	HalfDivisor = 2
+	HudTextLineStepPixels = 26
+
+	HudSquarePanelSizePixels = HudHeightPixels
+
+	HudNamePanelWidthPixels = 520
+	HudKeysPanelWidthPixels = WindowSizeX -
+		HudSquarePanelSizePixels*2 -
+		HudNamePanelWidthPixels
+
+	HalfTile = 0.5
+	Two      = 2
 )
 
 func defaultPlayerXSpawn() Vec2 {
@@ -103,6 +108,7 @@ var (
 	// ColorHUDBorder is the color of the HUD frame style.
 	ColorHUDBorder = color.RGBA{120, 120, 140, 255}
 	ColorHUDFill   = color.RGBA{10, 10, 10, 220}
+	ColorHUDText   = color.RGBA{220, 220, 220, 255}
 )
 
 //nolint:gochecknoglobals // texture manifest
@@ -120,4 +126,5 @@ var imageManifest = map[TextureID]string{
 	SkeletonSkull:    "skeleton-skull.png",
 	Chains:           "chains.png",
 	Light:            "lantern.png",
+	WasdKeys:         "wasd-keys.png",
 }

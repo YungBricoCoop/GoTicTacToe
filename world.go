@@ -160,7 +160,7 @@ func (w *World) wallSliceHeightOnScreen(distance float64) float64 {
 
 // wallSliceTopY returns the y coordinate where the wall slice should start so it is vertically centered.
 func (w *World) wallSliceTopY(lineH float64) float64 {
-	return float64(WindowSizeYDiv2) - lineH/HalfDivisor
+	return float64(WindowSizeYDiv2) - lineH/Two
 }
 
 // drawTexturedWallSlice draws one vertical textured strip on screen.
@@ -302,8 +302,8 @@ func (w *World) drawSingleSprite(screen *ebiten.Image, g *Game, p *Player, plane
 	drawStartY := -spriteHeight/2 + WindowSizeYDiv2 - zOffsetPx
 
 	// horizontal placement
-	drawStartX := -spriteWidth/HalfDivisor + spriteScreenX
-	drawEndX := spriteWidth/HalfDivisor + spriteScreenX
+	drawStartX := -spriteWidth/Two + spriteScreenX
+	drawEndX := spriteWidth/Two + spriteScreenX
 
 	// clip to screen bounds
 	if drawStartX < 0 {

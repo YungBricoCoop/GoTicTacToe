@@ -61,6 +61,10 @@ func (p *Player) Update(g *Game) {
 	moveSpeed := PlayerMovementSpeed * DeltaTime
 	rotSpeed := PlayerRotationSpeed * DeltaTime
 
+	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+		moveSpeed *= PlayerMovementSpeedMultiplicator
+	}
+
 	// w/s for forward/backward
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
 		p.move(g, p.dir.Scale(moveSpeed))

@@ -291,16 +291,16 @@ func (g *Game) Layout(_, _ int) (int, int) {
 }
 
 func (g *Game) drawNameInput(screen *ebiten.Image) {
-	g.drawText(screen, "Enter player names", NameInputX, NameInputY, TopLeft, color.White)
+	g.drawText(screen, "Enter player names", NameInputX, NameInputY, color.White)
 
 	label := "Player X: "
 	if !g.editingPlayerX {
 		label = "Player O: "
 	}
-	g.drawText(screen, label+g.inputBuffer, NameInputX, NameInputY+NameInputLineHeight, TopLeft, color.White)
+	g.drawText(screen, label+g.inputBuffer, NameInputX, NameInputY+NameInputLineHeight, color.White)
 
 	info := "Type name, Enter = OK, Backspace = delete"
-	g.drawText(screen, info, NameInputX, NameInputY+NameInputLineHeight*2, TopLeft, color.White)
+	g.drawText(screen, info, NameInputX, NameInputY+NameInputLineHeight*2, color.White)
 }
 
 func (g *Game) drawPlaying(screen *ebiten.Image) {
@@ -309,8 +309,8 @@ func (g *Game) drawPlaying(screen *ebiten.Image) {
 	}
 }
 
-func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
-	g.drawTextWithFace(screen, msg, x, y, align, col, g.assets.NormalTextFace, TextLineSpacing)
+func (g *Game) drawText(screen *ebiten.Image, msg string, x, y float64, col color.Color) {
+	g.drawTextWithFace(screen, msg, x, y, TopLeft, col, g.assets.NormalTextFace, TextLineSpacing)
 }
 
 func (g *Game) drawBigText(screen *ebiten.Image, msg string, x, y float64, align TextAlign, col color.Color) {
@@ -336,7 +336,7 @@ func (g *Game) drawTextWithFace(
 	switch align {
 	case TopLeft, CenterLeft, BottomLeft:
 	case TopCenter, Center, BottomCenter:
-		x -= w / HalfDivisor
+		x -= w / Two
 	case TopRight, CenterRight, BottomRight:
 		x -= w
 	}
@@ -344,7 +344,7 @@ func (g *Game) drawTextWithFace(
 	switch align {
 	case TopLeft, TopCenter, TopRight:
 	case CenterLeft, Center, CenterRight:
-		y -= h / HalfDivisor
+		y -= h / Two
 	case BottomLeft, BottomCenter, BottomRight:
 		y -= h
 	}

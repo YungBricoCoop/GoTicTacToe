@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Elwan Mayencourt, Masami Morimura
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -44,6 +47,7 @@ const (
 	SkeletonSkull    TextureID = 132
 	Chains           TextureID = 133
 	Light            TextureID = 134
+	WasdKeys         TextureID = 135
 )
 
 // LoadTextures loads all textures defined in imageManifest.
