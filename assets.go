@@ -5,9 +5,9 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 
-	"github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
@@ -21,11 +21,19 @@ type Assets struct {
 	Textures       TextureMap
 }
 
+//go:embed assets/fonts/*.ttf
+var fontsFS embed.FS
+
 // loadAssets loads all game resources. After this returns, Assets should be treated as read only.
 func loadAssets() (*Assets, error) {
-	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
+	fontBytes, err := fontsFS.ReadFile("assets/fonts/PressStart2P-Regular.ttf")
 	if err != nil {
 		return nil, fmt.Errorf("load font: %w", err)
+	}
+
+	fontSource, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
+	if err != nil {
+		return nil, fmt.Errorf("create font source: %w", err)
 	}
 
 	textures, err := LoadTextures()

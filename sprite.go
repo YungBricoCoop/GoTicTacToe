@@ -3,6 +3,8 @@
 
 package main
 
+import "sort"
+
 // Sprite represents a 2D image in the game world.
 // Position is the world coordinates of the sprite's center.
 // TextureID is the ID of the texture to use for rendering the sprite.
@@ -114,4 +116,36 @@ func createSprites() []*Sprite {
 			Hidden:    false,
 		},
 	}
+}
+
+// SortSpritesByDistance returns a slice of sprites sorted by distance from the reference position (descending).
+// It filters out nil or hidden sprites.
+func SortSpritesByDistance(sprites []*Sprite, refPos Vec2) []*Sprite {
+	type spriteDist struct {
+		s *Sprite
+		d float64
+	}
+
+	withDist := make([]spriteDist, 0, len(sprites))
+	for _, s := range sprites {
+		if s == nil || s.Hidden {
+			continue
+		}
+		dx := s.Position.X - refPos.X
+		dy := s.Position.Y - refPos.Y
+		withDist = append(withDist, spriteDist{
+			s: s,
+			d: dx*dx + dy*dy,
+		})
+	}
+
+	sort.Slice(withDist, func(i, j int) bool {
+		return withDist[i].d > withDist[j].d
+	})
+
+	sorted := make([]*Sprite, len(withDist))
+	for i, sd := range withDist {
+		sorted[i] = sd.s
+	}
+	return sorted
 }

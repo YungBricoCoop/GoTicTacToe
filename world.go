@@ -5,7 +5,6 @@ package main
 
 import (
 	"math"
-	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -161,7 +160,7 @@ func (w *World) wallSliceHeightOnScreen(distance float64) float64 {
 
 // wallSliceTopY returns the y coordinate where the wall slice should start so it is vertically centered.
 func (w *World) wallSliceTopY(lineH float64) float64 {
-	return float64(WindowSizeYDiv2) - lineH/HalfDivisor
+	return float64(WindowSizeYDiv2) - lineH/Two
 }
 
 // drawTexturedWallSlice draws one vertical textured strip on screen.
@@ -214,9 +213,6 @@ func (w *World) drawSprites(screen *ebiten.Image, g *Game, p *Player) {
 	if screen == nil || g == nil || p == nil || g.assets == nil {
 		return
 	}
-	if len(g.sprites) == 0 {
-		return
-	}
 	if w.zBuffer == nil || len(w.zBuffer) != WindowSizeX {
 		return
 	}
@@ -228,36 +224,31 @@ func (w *World) drawSprites(screen *ebiten.Image, g *Game, p *Player) {
 	}
 
 	// collect visible sprites with distance for sorting
-	type spriteDrawItem struct {
-		sprite  *Sprite
-		distSqr float64
+	allSprites := make([]*Sprite, 0, len(g.sprites)+1)
+	allSprites = append(allSprites, g.sprites...)
+
+	// add other player as a sprite
+	var other *Player
+	if g.currentPlayer == g.playerX {
+		other = g.playerO
+	} else {
+		other = g.playerX
 	}
-	items := make([]spriteDrawItem, 0, len(g.sprites))
 
-	for _, s := range g.sprites {
-		if s == nil || s.Hidden {
-			continue
-		}
-
-		dx := s.Position.X - p.pos.X
-		dy := s.Position.Y - p.pos.Y
-		items = append(items, spriteDrawItem{
-			sprite:  s,
-			distSqr: dx*dx + dy*dy,
+	if other != nil {
+		allSprites = append(allSprites, &Sprite{
+			Position:  other.pos,
+			TextureID: other.characterTextureID,
+			Scale:     1.0,
+			Z:         0.0,
+			Hidden:    false,
 		})
 	}
 
-	if len(items) == 0 {
-		return
-	}
+	sortedSprites := SortSpritesByDistance(allSprites, p.pos)
 
-	// draw far to near so the closest sprite is drawn last and overrides the ones behind it
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].distSqr > items[j].distSqr
-	})
-
-	for _, it := range items {
-		w.drawSingleSprite(screen, g, p, plane, it.sprite)
+	for _, s := range sortedSprites {
+		w.drawSingleSprite(screen, g, p, plane, s)
 	}
 }
 
@@ -311,8 +302,8 @@ func (w *World) drawSingleSprite(screen *ebiten.Image, g *Game, p *Player, plane
 	drawStartY := -spriteHeight/2 + WindowSizeYDiv2 - zOffsetPx
 
 	// horizontal placement
-	drawStartX := -spriteWidth/HalfDivisor + spriteScreenX
-	drawEndX := spriteWidth/HalfDivisor + spriteScreenX
+	drawStartX := -spriteWidth/Two + spriteScreenX
+	drawEndX := spriteWidth/Two + spriteScreenX
 
 	// clip to screen bounds
 	if drawStartX < 0 {
