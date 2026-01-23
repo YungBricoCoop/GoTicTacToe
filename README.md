@@ -8,7 +8,7 @@ Gopher Dungeon is a 3D Tic-Tac-Toe game with a pixelated dark dungeon vibe, tran
 
 The game is written in `Go` and runs in the browser using `WebAssembly`. It uses a custom raycasting engine inspired by og games like Wolfenstein 3D. The 3D rendering is built from scratch using the DDA (Digital Differential Analyzer) algorithm to make raycasting fast and efficient.
 
-[**Play it on GitHub Pages**](https://yungbricocoop.github.io/GoTicTacToe/)
+[**Play it on GitHub Pages**](https://yungbricocoop.github.io/gopher-dungeon/)
 
 ![alt text](docs/assets/images/game_example.png "Gopher Dungeon Screenshot")
 
